@@ -10,6 +10,8 @@ modality_mask_tag = 'modality_mask'
 dataset_split_tag = 'split'
 train_dataset_tag = 'train'
 test_dataset_tag = 'test'
+filename_tag = 'filename'
+origional_tag = 'filename'
 
 image_width = 224
 image_height = 224
