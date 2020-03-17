@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
+from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import transforms
@@ -103,18 +104,16 @@ class DeepFakeDataset(Dataset):
     def get_video_data(self, idx, modality, filename_tag):
         data_filepath = f'{self.base_dir}/{self.data.loc[idx, filename_tag]}'
         
-        if (not pd.isna(self.data.loc[idx, config.filename_tag]) and os.path.exists(data_filepath)):
-            temp_seq, temp_seq_mask = self.get_video_data(data_filepath, modality)
-            tm_seq_len = temp_seq.shape[0]
+        if (not pd.isna(self.data.loc[idx, filename_tag]) and os.path.exists(data_filepath)):
+            video = Video(data_filepath, self.seq_max_len, self.transforms_modalities[modality])
+            seq, seq_len = video.get_all_frames()
         else:
-            temp_seq = np.zeros((self.seq_max_len, config.image_channels,
+            seq = np.zeros((self.seq_max_len, config.image_channels,
                                  config.image_width, config.image_height))
-            temp_seq = torch.from_numpy(temp_seq).float()
-            temp_seq_mask = self.gen_mask(0, self.seq_max_len)
-        
-        video = Video(path, self.seq_max_len, self.transforms_modalities[modality])
-        frames, mask = video.get_all_frames()
-        return frames, mask
+            seq = torch.from_numpy(seq).float()
+            seq_len = 0
+
+        return seq, seq_len
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -127,19 +126,27 @@ class DeepFakeDataset(Dataset):
         modality_mask = []
         
         # print(f'************ Start Data Loader for {idx} ************')
-        self.get_video_data(config.filename_tag)
+        if(data_label==config.real_label_tag):
+            modality = f'{config.original_modality_tag}_{config.rgb_modality_tag}'
+            seq, seq_len = self.get_video_data(idx, config.rgb_modality_tag, config.original_filename_tag)
+            data[modality] = seq
+            data[modality + config.modality_seq_len_tag] = seq_len
+            modality_mask.append(True if seq_len == 0 else False)
 
-        data[modality + config.modality_mask_suffix_tag] = temp_seq_mask
-        data[modality] = temp_seq
-        # print(idx, tm_modality, tm_seq_len)
-            
-            if (tm_seq_len == 0):
-                modality_mask.append(True)
-            else:
-                modality_mask.append(False)
+        else:
+            modality = f'{config.original_modality_tag}_{config.rgb_modality_tag}'
+            seq, seq_len = self.get_video_data(idx, config.rgb_modality_tag, config.original_filename_tag)
+            data[modality] = seq
+            data[modality + config.modality_seq_len_tag] = seq_len
+            modality_mask.append(True if seq_len == 0 else False)
+
+            modality = f'{config.fake_modality_tag}_{config.rgb_modality_tag}'
+            seq, seq_len = self.get_video_data(idx, config.rgb_modality_tag, config.filename_tag)
+            data[modality] = seq
+            data[modality + config.modality_seq_len_tag] = seq_len
+            modality_mask.append(True if seq_len == 0 else False)
 
         modality_mask = torch.from_numpy(np.array(modality_mask)).bool()
-
         data[config.label_tag] = data_label[0]
         data[config.modality_mask_tag] = modality_mask
 
@@ -155,17 +162,28 @@ class DeepFakeDataset(Dataset):
         temp_dict_id_type = { i+1 : label_names[i] for i in range(len(label_names))}
         return num_labels, temp_dict_type_id, temp_dict_id_type
 
+modalities = [f'{config.fake_modality_tag}_{config.rgb_modality_tag}',
+              f'{config.original_modality_tag}_{config.rgb_modality_tag}']
 
-def get_ids_from_split(split_ids, split_index, validation_type='trial'):
-    temp = []
-    for id in split_index:
-        temp.append(split_ids[id])
+def gen_mask(seq_len, max_len):
+   return torch.arange(max_len) > seq_len
 
-    restricted_person_ids = None
-    restricted_sample_ids = None
+def pad_collate(batch):
+   batch_size = len(batch)
+   data = {}
+   for modality in modalities:
+       data[modality] = pad_sequence([batch[bin][modality] for bin in range(batch_size)], batch_first=True)
+       data[modality + config.modality_seq_len_tag] = torch.tensor(
+               [batch[bin][modality + config.modality_seq_len_tag] for bin in range(batch_size)],
+               dtype=torch.float)
 
-    if(validation_type=='trial'):
-        restricted_sample_ids = temp
-    else:
-        restricted_person_ids = temp
-    return restricted_sample_ids, restricted_person_ids
+       seq_max_len = data[modality + config.modality_seq_len_tag].max()
+       seq_mask = torch.stack(
+           [gen_mask(seq_len, seq_max_len) for seq_len in data[modality + config.modality_seq_len_tag]],
+           dim=0)
+       data[modality + config.modality_mask_tag] = seq_mask
+
+   data['label'] = torch.tensor([batch[bin]['label'] for bin in range(batch_size)],
+                                dtype=torch.long)
+   data['modality_mask'] = torch.stack([batch[bin]['modality_mask'] for bin in range(batch_size)], dim=0).bool()
+   return data
