@@ -42,7 +42,15 @@ package-lock.json
 geckodriver.log
 *.iml
 
-src/mode/execution_log
-src/mode/execution_backup_log
+src/model/execution_log
+src/model/execution_backup.log
+src/model/execution.log
+src/model/job_status.sh
+src/model/*log
+src/model/*.log.*
 trained_model
-
+log
+tb_runs
+tb*
+venv
+screenlog*
