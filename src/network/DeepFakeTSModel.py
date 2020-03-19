@@ -39,6 +39,7 @@ class DeepFakeTSModel(nn.Module):
         self.is_guiding = is_guiding
         self.num_activity_types = 2
 
+        print('module_networks', self.module_networks)
         self.mm_module = nn.ModuleDict()
         for modality in self.module_networks:
             self.mm_module[modality] = Vis_Module(cnn_in_channel=self.mm_module_properties[modality]['cnn_in_channel'],

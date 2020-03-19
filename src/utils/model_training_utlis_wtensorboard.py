@@ -113,6 +113,9 @@ def test_model_mu(model, optimizer, valid_dataloader,
 
             loss = loss_function(outputs, labels)
             valid_loss += loss.item()
+            
+            del batch
+            torch.cuda.empty_cache()
 
     valid_loss = valid_loss / len(valid_dataloader.dataset)
     valid_acc = valid_corrects / len(valid_dataloader.dataset)
@@ -190,6 +193,9 @@ def test_model(model, optimizer, valid_dataloader,
 
             loss = loss_function(outputs, labels)
             valid_loss += loss.item()
+            
+            del batch
+            torch.cuda.empty_cache()
 
     valid_loss = valid_loss / len(valid_dataloader.dataset)
     valid_acc = valid_corrects / len(valid_dataloader.dataset)
@@ -227,7 +233,7 @@ def model_validation(model, optimizer, valid_dataloader,
 
     model.eval()
     for batch_idx, batch in enumerate(valid_dataloader):
-
+        
         mask_graph = dict()
         for modality in modalities:
             batch[modality] = batch[modality].to(device)
@@ -248,13 +254,19 @@ def model_validation(model, optimizer, valid_dataloader,
 
         loss = loss_function(outputs, labels)
         valid_loss += loss.item()
+        
+        del batch
+        torch.cuda.empty_cache()
 
     valid_loss = valid_loss / len(valid_dataloader.dataset)
     valid_acc = valid_corrects / len(valid_dataloader.dataset)
     log_execution(log_base_dir, log_filename,
                   '#####> Valid Avg loss: {:.5f}, Acc:{:.5f}, F1: {:.5f}\n'.format(valid_loss, valid_acc,
-                                                                                         statistics.mean(f1_scores)))
-
+                                                                                 statistics.mean(f1_scores)))
+    del model
+    del optimizer
+    torch.cuda.empty_cache()
+    
     return valid_loss, valid_acc, statistics.mean(f1_scores)
 
 
@@ -342,14 +354,14 @@ def train_model(model, optimizer, scheduler,
 
         model.train()
 
-
         batch_improvement_it = 0
         for batch_idx, batch in enumerate(train_dataloader):
-
+            print('batch_idx', batch_idx)
             optimizer.zero_grad()
 
             mask_graph = dict()
             for modality in modalities:
+                print(modality, batch[modality].size())
                 batch[modality] = batch[modality].to(device)
                 batch[modality + config.modality_seq_len_tag] = batch[modality + config.modality_seq_len_tag].to(device)
                 batch[modality + config.modality_mask_suffix_tag] = batch[modality + config.modality_mask_suffix_tag].to(device)
@@ -447,7 +459,9 @@ def train_model(model, optimizer, scheduler,
 
                         batch_valid_f1_max = batch_valid_f1
                         batch_valid_loss_min = batch_valid_loss
-
+                
+            del batch
+            torch.cuda.empty_cache()    
 
         train_loss = train_loss / len(train_dataloader.dataset)
         train_acc = train_corrects / len(train_dataloader.dataset)

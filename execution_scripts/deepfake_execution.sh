@@ -1,14 +1,14 @@
 python3 ../deepfake_training.py \
 -lr 0.0003 \
 -ng 1 \
--cdn 1 \
+-cdn -1 \
 -sml 300 \
--bs 2 \
+-bs 1 \
 -ep 500 \
 -enl 2 \
 -fes 256 \
 -lhs 256 \
--menh 4 \
+-menh 2 \
 -mmnh 2 \
 -lld 0.3 \
 -uld 0.3 \
@@ -20,5 +20,5 @@ python3 ../deepfake_training.py \
 -tb_wn 'tb_runs/tb_dfts/h42_dp3' \
 -mcp 'dfts_' \
 -lstm_bi \
--dfp '/data/research_data/dfdc_train_data/' \
+-dfp '../dfdc_datasets/dfdc_train_data/' \
 -is_guiding 

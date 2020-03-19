@@ -229,7 +229,7 @@ log_execution(log_base_dir, log_filename, f'modalities:{modalities}\n')
 log_execution(log_base_dir, log_filename, f'executed_number_its: {executed_number_it}\n')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-if (torch.cuda.is_available()):
+if (torch.cuda.is_available() and cuda_device_no!=-1):
     device = torch.device(f'cuda:{cuda_device_no}')
 
 log_execution(log_base_dir, log_filename, f'pytorch version: {torch.__version__}\n')
@@ -255,7 +255,8 @@ transforms_modalities = {}
 transforms_modalities[config.original_modality_tag] = rgb_transforms
 transforms_modalities[config.fake_modality_tag] = rgb_transforms
 
-module_networks = [config.rgb_one_modality_tag, config.rgb_two_modality_tag]
+# module_networks = [config.rgb_one_modality_tag, config.rgb_two_modality_tag]
+module_networks = [config.rgb_one_modality_tag]
 mm_module_properties = defaultdict(dict)
 for modality in module_networks:
     mm_module_properties[modality]['cnn_in_channel'] = cnn_out_channel
@@ -269,8 +270,8 @@ for modality in module_networks:
     mm_module_properties[modality]['dropout'] = lower_layer_dropout
     mm_module_properties[modality]['activation'] = 'relu'
     mm_module_properties[modality]['fine_tune'] = True
-    mm_module_properties[modality]['feature_pooling_kernel'] = 3
-    mm_module_properties[modality]['feature_pooling_stride'] = 3
+    mm_module_properties[modality]['feature_pooling_kernel'] = 5
+    mm_module_properties[modality]['feature_pooling_stride'] = 5
     mm_module_properties[modality]['feature_pooling_type'] = 'max'
     mm_module_properties[modality]['lstm_dropout'] = 0.0
 
