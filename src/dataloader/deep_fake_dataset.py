@@ -27,10 +27,6 @@ class Video:
         face_frames = []
 
         for idx, frame in enumerate(self.container):
-            tm_face_frames = self.get_face_frames(frame)
-            for face_frame in tm_face_frames:
-                face_frames.append(face_frame)
-                
             frame = Image.fromarray(frame)
             if (self.transforms != None):
                 frame = self.transforms(frame)
@@ -87,8 +83,8 @@ class DeepFakeDataset(Dataset):
         self.num_labels, self.label_name_id, self.label_id_name = self.get_label_name_id(self.label_names)
 
     def load_data(self):
-        # self.data = pd.read_json(self.base_dir+'/'+self.metadata_filename, orient='index')
-        self.data = pd.read_csv(self.base_dir+'/'+self.metadata_filename)
+        # self.data = pd.read_json(self.data_dir_base_path+'/'+self.metadata_filename, orient='index')
+        self.data = pd.read_csv(self.data_dir_base_path+'/'+self.metadata_filename)
         self.data = self.data[self.data[config.dataset_split_tag] == self.dataset_type]
         if(self.restricted_labels!=None):
             for restricted_label in self.restricted_labels:
@@ -105,7 +101,7 @@ class DeepFakeDataset(Dataset):
         return torch.arange(max_len) > seq_len
     
     def get_video_data(self, idx, modality, filename_tag):
-        data_filepath = f'{self.base_dir}/{self.data.loc[idx, filename_tag]}'
+        data_filepath = f'{self.data_dir_base_path}/{self.data.loc[idx, filename_tag]}'
         
         if (not pd.isna(self.data.loc[idx, filename_tag]) and os.path.exists(data_filepath)):
             video = Video(data_filepath, self.seq_max_len, self.transforms_modalities[modality])
@@ -163,7 +159,7 @@ class DeepFakeDataset(Dataset):
     def get_label_name_id(self, label_names):
 
         label_names = sorted(label_names)
-        num_labels = len(label_names) + 1
+        num_labels = len(label_names)
 
         temp_dict_type_id = {label_names[i]: i + 1 for i in range(len(label_names))}
         temp_dict_id_type = { i+1 : label_names[i] for i in range(len(label_names))}

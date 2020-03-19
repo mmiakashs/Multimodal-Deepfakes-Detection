@@ -59,7 +59,7 @@ parser.add_argument("-vt", "--validation_type", help="validation_type",
 parser.add_argument("-tvp", "--total_valid_persons", help="Total valid persons",
                     type=int, default=1)
 parser.add_argument("-dfp", "--data_file_dir_base_path", help="data_file_dir_base_path",
-                    default='../utd_mhad/data')
+                    default='/data/research_data/dfdc_train_data/')
 parser.add_argument("-cout", "--cnn_out_channel", help="CNN out channel size",
                     type=int, default=16)
 parser.add_argument("-fes", "--feature_embed_size", help="CNN feature embedding size",
@@ -93,7 +93,7 @@ parser.add_argument("-img_h", "--image_height", help="transform to image height"
                     type=int, default=config.image_height)
 
 parser.add_argument("-mcp", "--model_checkpoint_prefix", help="model checkpoint filename prefix",
-                    default='utd_mhad')
+                    default='deepfake')
 parser.add_argument("-mcf", "--model_checkpoint_filename", help="model checkpoint filename",
                     default=None)
 parser.add_argument("-rcf", "--resume_checkpoint_filename", help="resume checkpoint filename",
@@ -110,13 +110,13 @@ parser.add_argument("-motion_type", "--motion_type", help="motion_type",
                     default='gross')
 
 parser.add_argument("-logf", "--log_filename", help="execution log filename",
-                    default='exe_utd_mhad.log')
+                    default='exe_deepfake.log')
 parser.add_argument("-logbd", "--log_base_dir", help="execution log base dir",
-                    default='log/utd_mhad')
+                    default='log')
 parser.add_argument("-final_log", "--final_log_filename", help="Final result log filename",
-                    default='final_results_hma_utd_mhad.log')
+                    default='final_results_deepfake.log')
 parser.add_argument("-tb_wn", "--tb_writer_name", help="tensorboard writer name",
-                    default='tb_runs/tb_utd_mhad_hma')
+                    default='tb_runs/tb_deepfake')
 parser.add_argument("-tbl", "--tb_log", help="tensorboard logging",
                     action="store_true", default=False)
 parser.add_argument("-lm_archi", "--log_model_archi", help="log model",
@@ -255,8 +255,10 @@ transforms_modalities = {}
 transforms_modalities[config.original_modality_tag] = rgb_transforms
 transforms_modalities[config.fake_modality_tag] = rgb_transforms
 
+module_networks = [config.rgb_one_modality_tag, config.rgb_two_modality_tag]
 mm_module_properties = defaultdict(dict)
-for modality in modalities:
+for modality in module_networks:
+    mm_module_properties[modality]['cnn_in_channel'] = cnn_out_channel
     mm_module_properties[modality]['cnn_out_channel'] = cnn_out_channel
     mm_module_properties[modality]['kernel_size'] = kernel_size
     mm_module_properties[modality]['feature_embed_size'] = feature_embed_size
@@ -278,14 +280,15 @@ full_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
                                restricted_labels=None,
                                dataset_type='train', seq_max_len=seq_max_len,
                                window_size=window_size, window_stride=window_stride,
-                               transforms_modalities=transforms_modalities)
+                               transforms_modalities=transforms_modalities,
+                               metadata_filename='metadata.csv')
 
-person_ids = full_dataset.data.performer_id.unique()
 num_labels = full_dataset.num_labels
-log_execution(log_base_dir, log_filename, f'total_activities: {num_labels}')
-log_execution(log_base_dir, log_filename, f'train person_ids: {person_ids}')
+label_names = full_dataset.label_names
+log_execution(log_base_dir, log_filename, f'total_activities: {num_labels}\n')
+log_execution(log_base_dir, log_filename, f'total_activities: {full_dataset.label_names}\n')
 
-validation_split = .2
+validation_split = .1
 shuffle_dataset = True
 random_seed= 42
 
@@ -303,12 +306,12 @@ train_sampler = SubsetRandomSampler(train_indices)
 valid_sampler = SubsetRandomSampler(val_indices)
 
 train_dataloader = DataLoader(full_dataset, batch_size=batch_size,
-                              shuffle=True, drop_last=False,
+                              drop_last=False,
                               sampler=train_sampler,
                               collate_fn=pad_collate, num_workers=2)
 
 valid_dataloader = DataLoader(full_dataset, batch_size=batch_size,
-                              shuffle=True, drop_last=False,
+                              drop_last=False,
                               sampler=valid_sampler,
                               collate_fn=pad_collate, num_workers=2)
 
@@ -321,7 +324,8 @@ model = DeepFakeTSModel(mm_module_properties=mm_module_properties,
                         multi_modal_nhead=multi_modal_nhead,
                         mm_embedding_attn_merge_type=mm_embedding_attn_merge_type,
                         dropout=upper_layer_dropout,
-                        is_guiding=args.is_guiding)
+                        is_guiding=args.is_guiding,
+                        module_networks=module_networks)
 if (no_gpus > 1):
     gpu_list = list(range(torch.cuda.device_count()))
     model = nn.DataParallel(model, device_ids=gpu_list)
@@ -367,9 +371,7 @@ valid_loss, valid_acc, valid_f1 = train_model(model=model,
                                               log_base_dir=log_base_dir,
                                               tensorboard_writer=tb_writer,
                                               strict_load=False,
-                                              early_stop_patience=early_stop_patience,
-                                              num_activity_types=num_labels,
-                                              feature_embed_size=feature_embed_size)
+                                              early_stop_patience=early_stop_patience)
 
 result = f'{valid_acc}, {valid_f1}, final,' \
          f'{cnn_out_channel}, {kernel_size}, {feature_embed_size}, {lstm_hidden_size}, {lstm_encoder_num_layers},' \

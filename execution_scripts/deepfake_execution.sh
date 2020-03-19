@@ -19,4 +19,6 @@ python3 ../deepfake_training.py \
 -tbl \
 -tb_wn 'tb_runs/tb_dfts/h42_dp3' \
 -mcp 'dfts_' \
--lstm_bi
+-lstm_bi \
+-dfp '/data/research_data/dfdc_train_data/' \
+-is_guiding 

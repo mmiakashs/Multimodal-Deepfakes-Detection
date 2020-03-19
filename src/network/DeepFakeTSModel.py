@@ -11,12 +11,14 @@ class DeepFakeTSModel(nn.Module):
                  modalities,
                  window_size, window_stride,
                  modality_embedding_size,
+                 module_networks,
                  batch_first=True,
                  multi_modal_nhead=4,
                  mm_embedding_attn_merge_type='sum',
                  dropout=0.1,
                  activation="relu",
-                 is_guiding=False):
+                 is_guiding=False,
+                 num_activity_types=2):
         super(DeepFakeTSModel, self).__init__()
 
         self.mm_module_properties = mm_module_properties
@@ -32,9 +34,10 @@ class DeepFakeTSModel(nn.Module):
         self.window_stride = window_stride
         self.lstm_bidirectional = False
         self.modality_embedding_size = modality_embedding_size
-        self.module_networks = [config.rgb_one_modality_tag, config.rgb_two_modality_tag]
+        self.module_networks = module_networks
         self.num_module_networks = len(self.module_networks)
         self.is_guiding = is_guiding
+        self.num_activity_types = 2
 
         self.mm_module = nn.ModuleDict()
         for modality in self.module_networks:
@@ -124,9 +127,9 @@ class DeepFakeTSModel(nn.Module):
         for module_network in self.module_networks:
             tm_attn_output, self.module_attn_weights[module_network] = \
                 self.mm_module[module_network](input[config.fake_modality_tag],
-                                               input[config.real_modality_tag],
-                                               input[config.fake_modality_tag+config.modality_mask_tag],
-                                               input[config.real_modality_tag+config.modality_mask_tag])
+                                               input[config.original_modality_tag],
+                                               input[config.fake_modality_tag+config.modality_mask_suffix_tag],
+                                               input[config.original_modality_tag+config.modality_mask_suffix_tag])
 #             tm_attn_output = torch.sum(tm_attn_output, dim=1).squeeze(dim=1)
             attn_output[module_network] = tm_attn_output
                 # print(f'attn_output[{modality}] size: {attn_output[modality].size()}')

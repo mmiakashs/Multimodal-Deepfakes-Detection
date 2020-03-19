@@ -85,8 +85,7 @@ class Vis_Module(nn.Module):
         return torch.arange(max_len) > seq_len
 
     def forward(self, fake_input, real_input,
-                fake_input_mask, real_input_mask,
-                input_len):
+                fake_input_mask, real_input_mask):
         # print('########### Start Vis_Module ###########')
         # print('input shape', input.size())
         if (self.is_guiding):
@@ -103,8 +102,8 @@ class Vis_Module(nn.Module):
 
     def fake_embed_guided_by_real(self, fake_input, real_input,
                                   fake_input_mask, real_input_mask):
-        real_x = real_input.view(-1, input.size(-3), input.size(-2), input.size(-1)).contiguous()
-        fake_x = fake_input.view(-1, input.size(-3), input.size(-2), input.size(-1)).contiguous()
+        real_x = real_input.view(-1, real_input.size(-3), real_input.size(-2), real_input.size(-1)).contiguous()
+        fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
 
         real_embed = self.feature_extractor(real_x).contiguous()
         fake_embed = self.feature_extractor(fake_x).contiguous()
@@ -176,7 +175,7 @@ class Vis_Module(nn.Module):
 
     def fake_embed_self_guide(self, fake_input,
                               fake_input_mask):
-        fake_x = fake_input.view(-1, input.size(-3), input.size(-2), input.size(-1)).contiguous()
+        fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
 
         fake_embed = self.feature_extractor(fake_x).contiguous()
         if (self.batch_first):

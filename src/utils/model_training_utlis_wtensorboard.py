@@ -7,7 +7,7 @@ from sklearn.metrics import f1_score
 from tqdm import tqdm
 
 from .log import *
-from ..network.ntu import config
+from . import config
 from torch.utils.tensorboard import SummaryWriter
 
 def load_model(model=None,
@@ -232,7 +232,7 @@ def model_validation(model, optimizer, valid_dataloader,
         for modality in modalities:
             batch[modality] = batch[modality].to(device)
             batch[modality + config.modality_seq_len_tag] = batch[modality + config.modality_seq_len_tag].to(device)
-            batch[modality + config.modality_mask_tag] = batch[modality + config.modality_mask_tag].to(device)
+            batch[modality + config.modality_mask_suffix_tag] = batch[modality + config.modality_mask_suffix_tag].to(device)
             mask_graph[modality] = batch['modality_mask'].to(device)
 
         batch['modality_mask'] = batch['modality_mask'].to(device)
@@ -352,7 +352,7 @@ def train_model(model, optimizer, scheduler,
             for modality in modalities:
                 batch[modality] = batch[modality].to(device)
                 batch[modality + config.modality_seq_len_tag] = batch[modality + config.modality_seq_len_tag].to(device)
-                batch[modality + config.modality_mask_tag] = batch[modality + config.modality_mask_tag].to(device)
+                batch[modality + config.modality_mask_suffix_tag] = batch[modality + config.modality_mask_suffix_tag].to(device)
                 mask_graph[modality] = batch['modality_mask'].to(device)
 
             batch['modality_mask'] = batch['modality_mask'].to(device)

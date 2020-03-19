@@ -1,0 +1,108 @@
+validation type: person, valid_person_index:0, is_guiding: False 
+window size: 5, window_stride: 5, seq_max_len:300
+early_stop_patience: 50, cycle_length:100, cycle_mul: 2
+image_width: 224, image_height: 224
+kernel size: 3, lr:0.0003, epoch:500, batch_size:2
+cnn_out_channel: 64, feature_embed_size:256
+lstm_hidden_size: 256, matn_dim_feedforward:256
+lower_layer_dropout:0.3, upper_layer_dropout: 0.3
+module_embedding_nhead:4
+multi_modal_nhead:2, mm_embedding_attention_type:concat
+gat_attention_type: sum, is_gat_attn_model:False, gat_mh_attn_nhead:1
+encoder_num_layers: 2, resume training:False
+data_file_dir_base_path:/data/research_data/dfdc_train_data/, modalities:['real', 'fake']
+modalities:['real', 'fake']
+executed_number_its: -1
+pytorch version: 1.4.0
+GPU Availability: cuda:1, no_gpus: 1
+total_activities: 2
+total_activities: ['FAKE' 'REAL']
+
+
+	Start execution training 
+
+train_dataloader len: 53620
+valid_dataloader len: 5958
+train dataset len: 119154, train dataloader len: 53620
+valid dataset len: 119154, valid dataloader len: 5958
+validation type: person, valid_person_index:0, is_guiding: False 
+window size: 5, window_stride: 5, seq_max_len:300
+early_stop_patience: 50, cycle_length:100, cycle_mul: 2
+image_width: 224, image_height: 224
+kernel size: 3, lr:0.0003, epoch:500, batch_size:2
+cnn_out_channel: 64, feature_embed_size:256
+lstm_hidden_size: 256, matn_dim_feedforward:256
+lower_layer_dropout:0.3, upper_layer_dropout: 0.3
+module_embedding_nhead:4
+multi_modal_nhead:2, mm_embedding_attention_type:concat
+gat_attention_type: sum, is_gat_attn_model:False, gat_mh_attn_nhead:1
+encoder_num_layers: 2, resume training:False
+data_file_dir_base_path:/data/research_data/dfdc_train_data/, modalities:['real', 'fake']
+modalities:['real', 'fake']
+executed_number_its: -1
+pytorch version: 1.4.0
+GPU Availability: cuda:1, no_gpus: 1
+total_activities: 2
+total_activities: ['FAKE' 'REAL']
+
+
+	Start execution training 
+
+train_dataloader len: 53620
+valid_dataloader len: 5958
+train dataset len: 119154, train dataloader len: 53620
+valid dataset len: 119154, valid dataloader len: 5958
+validation type: person, valid_person_index:0, is_guiding: False 
+window size: 5, window_stride: 5, seq_max_len:300
+early_stop_patience: 50, cycle_length:100, cycle_mul: 2
+image_width: 224, image_height: 224
+kernel size: 3, lr:0.0003, epoch:500, batch_size:2
+cnn_out_channel: 64, feature_embed_size:256
+lstm_hidden_size: 256, matn_dim_feedforward:256
+lower_layer_dropout:0.3, upper_layer_dropout: 0.3
+module_embedding_nhead:4
+multi_modal_nhead:2, mm_embedding_attention_type:concat
+gat_attention_type: sum, is_gat_attn_model:False, gat_mh_attn_nhead:1
+encoder_num_layers: 2, resume training:False
+data_file_dir_base_path:/data/research_data/dfdc_train_data/, modalities:['real', 'fake']
+modalities:['real', 'fake']
+executed_number_its: -1
+pytorch version: 1.4.0
+GPU Availability: cuda:1, no_gpus: 1
+total_activities: 2
+total_activities: ['FAKE' 'REAL']
+
+
+	Start execution training 
+
+train_dataloader len: 53620
+valid_dataloader len: 5958
+train dataset len: 119154, train dataloader len: 53620
+valid dataset len: 119154, valid dataloader len: 5958
+validation type: person, valid_person_index:0, is_guiding: True 
+window size: 5, window_stride: 5, seq_max_len:300
+early_stop_patience: 50, cycle_length:100, cycle_mul: 2
+image_width: 224, image_height: 224
+kernel size: 3, lr:0.0003, epoch:500, batch_size:2
+cnn_out_channel: 64, feature_embed_size:256
+lstm_hidden_size: 256, matn_dim_feedforward:256
+lower_layer_dropout:0.3, upper_layer_dropout: 0.3
+module_embedding_nhead:4
+multi_modal_nhead:2, mm_embedding_attention_type:concat
+gat_attention_type: sum, is_gat_attn_model:False, gat_mh_attn_nhead:1
+encoder_num_layers: 2, resume training:False
+data_file_dir_base_path:/data/research_data/dfdc_train_data/, modalities:['real', 'fake']
+modalities:['real', 'fake']
+executed_number_its: -1
+pytorch version: 1.4.0
+GPU Availability: cuda:1, no_gpus: 1
+total_activities: 2
+total_activities: ['FAKE' 'REAL']
+
+
+	Start execution training 
+
+train_dataloader len: 53620
+valid_dataloader len: 5958
+train dataset len: 119154, train dataloader len: 53620
+valid dataset len: 119154, valid dataloader len: 5958
