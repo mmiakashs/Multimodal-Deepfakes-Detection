@@ -33,7 +33,7 @@ modalities = [f'{config.original_modality_tag}_{config.rgb_modality_tag}',
 transforms_modalities = {modalities[0]: rgb_transforms,
                          modalities[1]: rgb_transforms}
 
-train_dataset = DeepFakeDataset(base_dir=data_dir_base_path,
+train_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
                                 modalities=modalities,
                                 dataset_type=config.train_dataset_tag, transforms_modalities=transforms_modalities,
                                 seq_max_len=300, window_size=5, window_stride=5,

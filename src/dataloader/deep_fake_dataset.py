@@ -40,18 +40,6 @@ class Video:
         seq_len = seq.size(0)
         self.container.close()
         return seq, seq_len
-
-    def get_face_frames(self, frame):
-        face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-        face_locations = face_cascade.detectMultiScale(frame, 1.3, 5)
-
-#         face_locations = face_recognition.face_locations(frame)
-        frames = []
-        for face_location in face_locations:
-            x, y, w, h = face_location
-            face_image = image[y:y+h, x:x+w]
-            frames.append(face_image)
-        return frames
     
     def init_head(self):
         self.container.set_image_index(0)
@@ -71,14 +59,14 @@ class Video:
 
 class DeepFakeDataset(Dataset):
 
-    def __init__(self, base_dir,
+    def __init__(self, data_dir_base_path,
                  modalities, dataset_type='train',
                  window_size=1, window_stride=1,
                  seq_max_len=300, transforms_modalities=None,
                  restricted_ids=None, restricted_labels=None,
                  metadata_filename='metadata.json'):
 
-        self.base_dir = base_dir
+        self.data_dir_base_path = data_dir_base_path
         self.dataset_type = dataset_type
         self.transforms_modalities = transforms_modalities
         self.restricted_ids = restricted_ids
@@ -141,25 +129,25 @@ class DeepFakeDataset(Dataset):
         
         # print(f'************ Start Data Loader for {idx} ************')
         if(data_label==config.real_label_tag):
-            modality = f'{config.original_modality_tag}_{config.rgb_modality_tag}'
+            modality = config.original_modality_tag
             seq, seq_len = self.get_video_data(idx, modality, config.filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
             
-            modality = f'{config.fake_modality_tag}_{config.rgb_modality_tag}'
+            modality = config.fake_modality_tag
             data[modality] = torch.zeros_like(seq)
             data[modality + config.modality_seq_len_tag] = 0
             modality_mask.append(True)
 
         else:
-            modality = f'{config.original_modality_tag}_{config.rgb_modality_tag}'
+            modality = config.original_modality_tag
             seq, seq_len = self.get_video_data(idx, modality, config.original_filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
 
-            modality = f'{config.fake_modality_tag}_{config.rgb_modality_tag}'
+            modality = config.fake_modality_tag
             seq, seq_len = self.get_video_data(idx, modality, config.filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
@@ -181,8 +169,8 @@ class DeepFakeDataset(Dataset):
         temp_dict_id_type = { i+1 : label_names[i] for i in range(len(label_names))}
         return num_labels, temp_dict_type_id, temp_dict_id_type
 
-modalities = [f'{config.original_modality_tag}_{config.rgb_modality_tag}',
-              f'{config.fake_modality_tag}_{config.rgb_modality_tag}']
+modalities = [config.original_modality_tag,
+              config.fake_modality_tag]
 
 def gen_mask(seq_len, max_len):
     return torch.arange(max_len) > seq_len
@@ -192,10 +180,6 @@ def pad_collate(batch):
     data = {}
     
     for modality in modalities:
-        for bin in range(batch_size):
-            if (batch[bin]['modality_mask'][0]==True and batch[bin]['modality_mask'][1]==True):
-                print("###############################################")
-            
         data[modality] = pad_sequence([batch[bin][modality] for bin in range(batch_size)], batch_first=True)
         data[modality + config.modality_seq_len_tag] = torch.tensor(
                [batch[bin][modality + config.modality_seq_len_tag] for bin in range(batch_size)],
@@ -210,5 +194,26 @@ def pad_collate(batch):
 
     data['label'] = torch.tensor([batch[bin]['label'] for bin in range(batch_size)],
                                 dtype=torch.long)
+    data['modality_mask'] = torch.stack([batch[bin]['modality_mask'] for bin in range(batch_size)], dim=0).bool()
+    return data
+
+
+def pad_collate_fake(batch):
+    batch_size = len(batch)
+    data = {}
+
+    for modality in modalities:
+        data[modality] = pad_sequence([batch[bin][modality] for bin in range(batch_size)], batch_first=True)
+        data[modality + config.modality_seq_len_tag] = torch.tensor(
+            [batch[bin][modality + config.modality_seq_len_tag] for bin in range(batch_size)],
+            dtype=torch.float)
+
+        seq_max_len = data[modality + config.modality_seq_len_tag].max()
+        seq_mask = torch.stack(
+            [gen_mask(seq_len, seq_max_len) for seq_len in data[modality + config.modality_seq_len_tag]], dim=0)
+        data[modality + config.modality_mask_suffix_tag] = seq_mask
+
+    data['label'] = torch.tensor([batch[bin]['label'] for bin in range(batch_size)],
+                                 dtype=torch.long)
     data['modality_mask'] = torch.stack([batch[bin]['modality_mask'] for bin in range(batch_size)], dim=0).bool()
     return data
