@@ -39,7 +39,7 @@ class Vis_Module(nn.Module):
         self.is_attention = is_attention
         self.is_guiding = is_guiding
 
-        self.feature_extractor = models.resnet50(pretrained=True)
+        self.feature_extractor = models.resnet18(pretrained=True)
         if (self.fine_tune):
             self.set_parameter_requires_grad(self.feature_extractor, self.fine_tune)
 

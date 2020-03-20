@@ -13,24 +13,26 @@ from src.utils import config
 
 #imageio read frame as (channel, height, width)
 class Video:
-    def __init__(self, path, seq_max_len=None, transforms=None):
+    def __init__(self, path, seq_max_len=None, transforms=None, stride=15):
         self.path = path
         self.seq_max_len = seq_max_len
         self.transforms = transforms
         self.container = imageio.get_reader(path, 'ffmpeg')
         self.length = self.container.count_frames()
         self.fps = self.container.get_meta_data()['fps']
+        self.stride = stride
 
     def get_all_frames(self):
         self.init_head()
         frames = []
         face_frames = []
-
+        
         for idx, frame in enumerate(self.container):
-            frame = Image.fromarray(frame)
-            if (self.transforms != None):
-                frame = self.transforms(frame)
-            frames.append(frame)
+            if(idx%self.stride==0):
+                frame = Image.fromarray(frame)
+                if (self.transforms != None):
+                    frame = self.transforms(frame)
+                frames.append(frame)
 
         seq = torch.stack(frames, dim=0).float()
         seq_len = seq.size(0)
@@ -161,8 +163,8 @@ class DeepFakeDataset(Dataset):
         label_names = sorted(label_names)
         num_labels = len(label_names)
 
-        temp_dict_type_id = {label_names[i]: i + 1 for i in range(len(label_names))}
-        temp_dict_id_type = { i+1 : label_names[i] for i in range(len(label_names))}
+        temp_dict_type_id = {label_names[i]: i for i in range(len(label_names))}
+        temp_dict_id_type = { i : label_names[i] for i in range(len(label_names))}
         return num_labels, temp_dict_type_id, temp_dict_id_type
 
 modalities = [config.original_modality_tag,

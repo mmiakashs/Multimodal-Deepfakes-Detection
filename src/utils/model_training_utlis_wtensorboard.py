@@ -284,7 +284,7 @@ def train_model(model, optimizer, scheduler,
                 epochs=100,
                 resume_training=True,
                 show_checkpoint_info=False,
-                improvement_val_it=3,
+                improvement_val_it=100,
                 strict_load=True,
                 tensorboard_writer=None,
                 early_stop_patience=50):
@@ -356,12 +356,10 @@ def train_model(model, optimizer, scheduler,
 
         batch_improvement_it = 0
         for batch_idx, batch in enumerate(train_dataloader):
-            print('batch_idx', batch_idx)
             optimizer.zero_grad()
 
             mask_graph = dict()
             for modality in modalities:
-                print(modality, batch[modality].size())
                 batch[modality] = batch[modality].to(device)
                 batch[modality + config.modality_seq_len_tag] = batch[modality + config.modality_seq_len_tag].to(device)
                 batch[modality + config.modality_mask_suffix_tag] = batch[modality + config.modality_mask_suffix_tag].to(device)
@@ -388,11 +386,14 @@ def train_model(model, optimizer, scheduler,
             loss.backward()
             optimizer.step()
             scheduler.step(epoch + batch_idx / train_dataloader_len)
+            
+            del batch
+            torch.cuda.empty_cache() 
 
             if batch_idx % 10 == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tAcc: {:.4f}'.format(
-                    epoch, (batch_idx+1) * batch_size, len(train_dataloader.dataset),
-                           100. * batch_idx / len(train_dataloader),
+                print('Train Epoch: {} [{}/{} ({:.2f}%)]\tLoss: {:.6f}\tAcc: {:.4f}'.format(
+                    epoch, (batch_idx+1) * batch_size, len(train_dataloader),
+                           100.0 * float(batch_idx) / float(len(train_dataloader)),
                     batch_loss, batch_train_acc))
 
             if(batch_train_acc > batch_train_acc_max):
@@ -459,9 +460,7 @@ def train_model(model, optimizer, scheduler,
 
                         batch_valid_f1_max = batch_valid_f1
                         batch_valid_loss_min = batch_valid_loss
-                
-            del batch
-            torch.cuda.empty_cache()    
+               
 
         train_loss = train_loss / len(train_dataloader.dataset)
         train_acc = train_corrects / len(train_dataloader.dataset)

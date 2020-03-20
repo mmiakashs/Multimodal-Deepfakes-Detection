@@ -211,7 +211,7 @@ log_execution(log_base_dir, log_filename,
 log_execution(log_base_dir, log_filename,
               f'cnn_out_channel: {cnn_out_channel}, feature_embed_size:{feature_embed_size}\n')
 log_execution(log_base_dir, log_filename,
-              f'lstm_hidden_size: {lstm_hidden_size}, matn_dim_feedforward:{matn_dim_feedforward}\n')
+              f'lstm_bidirectional: {lstm_bidirectional}, lstm_hidden_size: {lstm_hidden_size}, matn_dim_feedforward:{matn_dim_feedforward}\n')
 log_execution(log_base_dir, log_filename,
               f'lower_layer_dropout:{lower_layer_dropout}, upper_layer_dropout: {upper_layer_dropout}\n')
 log_execution(log_base_dir, log_filename, f'module_embedding_nhead:{module_embedding_nhead}\n')
@@ -271,7 +271,7 @@ for modality in module_networks:
     mm_module_properties[modality]['activation'] = 'relu'
     mm_module_properties[modality]['fine_tune'] = True
     mm_module_properties[modality]['feature_pooling_kernel'] = 5
-    mm_module_properties[modality]['feature_pooling_stride'] = 5
+    mm_module_properties[modality]['feature_pooling_stride'] = 3
     mm_module_properties[modality]['feature_pooling_type'] = 'max'
     mm_module_properties[modality]['lstm_dropout'] = 0.0
 
@@ -289,7 +289,7 @@ label_names = full_dataset.label_names
 log_execution(log_base_dir, log_filename, f'total_activities: {num_labels}\n')
 log_execution(log_base_dir, log_filename, f'total_activities: {full_dataset.label_names}\n')
 
-validation_split = .1
+validation_split = .03
 shuffle_dataset = True
 random_seed= 42
 

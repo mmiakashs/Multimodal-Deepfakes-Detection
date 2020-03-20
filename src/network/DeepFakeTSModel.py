@@ -147,8 +147,7 @@ class DeepFakeTSModel(nn.Module):
         nbatches = mm_embeddings.shape[0]
         # transpose batch and sequence (B x S x ..) --> (S x B x ..)
         mm_embeddings = mm_embeddings.transpose(0, 1).contiguous()
-        mattn_output, self.mm_attn_weight = self.mm_mhattn(mm_embeddings, mm_embeddings, mm_embeddings,
-                                                           input['modality_mask'])
+        mattn_output, self.mm_attn_weight = self.mm_mhattn(mm_embeddings, mm_embeddings, mm_embeddings)
         mattn_output = mattn_output.transpose(0,1).contiguous()  # transpose batch and sequence (S x B x ..) --> (B x S x ..)
 
         # print('mattn_output',mattn_output.size())
