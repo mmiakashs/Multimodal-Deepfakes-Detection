@@ -14,6 +14,9 @@ from src.network.DeepFakeTSModel import DeepFakeTSModel
 from src.utils import config
 from src.utils.log import *
 from src.utils.model_training_utlis_wtensorboard import train_model
+from torchvision.transforms import transforms
+from torch.utils.data import Dataset
+from torch.utils.data.dataloader import DataLoader
 
 debug_mode = False
 

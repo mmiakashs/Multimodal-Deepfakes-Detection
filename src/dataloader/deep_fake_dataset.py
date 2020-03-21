@@ -31,22 +31,21 @@ class Video:
         frames = []
         face_frames = []
 
-        tm_frame_count = 1
+        tm_frame_count = 0
         total_frames_in_segment = self.consecutive_frame_stride * self.segment_size
-        segment_number = 0
+        segment_number = 1
         for idx, frame in enumerate(self.container):
-
             if(tm_frame_count < total_frames_in_segment):
                 if(tm_frame_count % self.consecutive_frame_stride==0):
                     frame = Image.fromarray(frame)
                     if (self.transforms != None):
                         frame = self.transforms(frame)
                     frames.append(frame)
-            else:
-                segment_number += 1
+                
             tm_frame_count += 1
             if (idx >= segment_number * self.segment_stride):
                 tm_frame_count = 0
+                segment_number += 1
 
 
         seq = torch.stack(frames, dim=0).float()
