@@ -1,4 +1,5 @@
 import os
+
 import imageio
 import numpy as np
 import pandas as pd
@@ -6,33 +7,47 @@ import torch
 from PIL import Image
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset
-from torch.utils.data.dataloader import DataLoader
-from torchvision.transforms import transforms
 
 from src.utils import config
 
+
 #imageio read frame as (channel, height, width)
 class Video:
-    def __init__(self, path, seq_max_len=None, transforms=None, stride=15):
+    def __init__(self, path, seq_max_len=None, transforms=None,
+                 segment_stride=130, consecutive_frame_stride=3,
+                 segment_size=3):
         self.path = path
         self.seq_max_len = seq_max_len
         self.transforms = transforms
         self.container = imageio.get_reader(path, 'ffmpeg')
         self.length = self.container.count_frames()
         self.fps = self.container.get_meta_data()['fps']
-        self.stride = stride
+        self.segment_stride = segment_stride
+        self.consecutive_frame_stride = consecutive_frame_stride
+        self.segment_size = segment_size
 
     def get_all_frames(self):
         self.init_head()
         frames = []
         face_frames = []
-        
+
+        tm_frame_count = 1
+        total_frames_in_segment = self.consecutive_frame_stride * self.segment_size
+        segment_number = 0
         for idx, frame in enumerate(self.container):
-            if(idx%self.stride==0):
-                frame = Image.fromarray(frame)
-                if (self.transforms != None):
-                    frame = self.transforms(frame)
-                frames.append(frame)
+
+            if(tm_frame_count < total_frames_in_segment):
+                if(tm_frame_count % self.consecutive_frame_stride==0):
+                    frame = Image.fromarray(frame)
+                    if (self.transforms != None):
+                        frame = self.transforms(frame)
+                    frames.append(frame)
+            else:
+                segment_number += 1
+            tm_frame_count += 1
+            if (idx >= segment_number * self.segment_stride):
+                tm_frame_count = 0
+
 
         seq = torch.stack(frames, dim=0).float()
         seq_len = seq.size(0)
