@@ -27,7 +27,7 @@ rgb_transforms = transforms.Compose([
 video = Video(f'{data_dir_base_path}/aagfhgtpmv.mp4', transforms=rgb_transforms)
 print(video.get_all_frames()[0].size())
 
-modalities = [f'{config.original_modality_tag}',
+modalities = [f'{config.real_modality_tag}',
               f'{config.fake_modality_tag}']
 
 transforms_modalities = {modalities[0]: rgb_transforms,

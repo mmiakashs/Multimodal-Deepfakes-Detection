@@ -141,7 +141,7 @@ class DeepFakeDataset(Dataset):
         
         # print(f'************ Start Data Loader for {idx} ************')
         if(data_label==config.real_label_tag):
-            modality = config.original_modality_tag
+            modality = config.real_modality_tag
             seq, seq_len = self.get_video_data(idx, modality, config.filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
@@ -153,7 +153,7 @@ class DeepFakeDataset(Dataset):
             modality_mask.append(True)
 
         else:
-            modality = config.original_modality_tag
+            modality = config.real_modality_tag
             seq, seq_len = self.get_video_data(idx, modality, config.original_filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
@@ -181,7 +181,7 @@ class DeepFakeDataset(Dataset):
         temp_dict_id_type = { i : label_names[i] for i in range(len(label_names))}
         return num_labels, temp_dict_type_id, temp_dict_id_type
 
-modalities = [config.original_modality_tag,
+modalities = [config.real_modality_tag,
               config.fake_modality_tag]
 
 def gen_mask(seq_len, max_len):

@@ -1,6 +1,6 @@
 
 fake_modality_tag = 'fake'
-original_modality_tag = 'real'
+real_modality_tag = 'real'
 rgb_modality_tag = 'rgb'
 face_modality_tag = 'face'
 rgb_one_modality_tag = 'rgb_one'

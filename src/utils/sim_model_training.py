@@ -93,7 +93,7 @@ def model_validation(model, optimizer, valid_dataloader,
         batch_size = batch['label'].size(0)
 
         outputs, embeds = model(batch)
-        _, real_preds = torch.max(outputs[config.original_modality_tag], 1)
+        _, real_preds = torch.max(outputs[config.real_modality_tag], 1)
         _, fake_preds = torch.max(outputs[config.fake_modality_tag], 1)
 
         batch_corrects = torch.sum(real_preds == labels.data)
@@ -104,7 +104,7 @@ def model_validation(model, optimizer, valid_dataloader,
         f1_scores.append(f1_score(real_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
         f1_scores.append(f1_score(fake_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
 
-        real_loss = classification_loss(outputs[config.original_modality_tag], labels)
+        real_loss = classification_loss(outputs[config.real_modality_tag], labels)
         fake_loss = classification_loss(outputs[config.fake_modality_tag], labels)
         simLoss = simLoss()
         loss = simLoss + real_loss + fake_loss
@@ -231,7 +231,7 @@ def train_model(model, optimizer, scheduler,
             batch_size = batch['label'].size(0)
 
             outputs,embeds = model(batch)
-            _, real_preds = torch.max(outputs[config.original_modality_tag], 1)
+            _, real_preds = torch.max(outputs[config.real_modality_tag], 1)
             _, fake_preds = torch.max(outputs[config.fake_modality_tag], 1)
 
             batch_corrects = torch.sum(real_preds == labels.data)
@@ -242,7 +242,7 @@ def train_model(model, optimizer, scheduler,
             f1_scores.append(f1_score(real_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
             f1_scores.append(f1_score(fake_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
 
-            real_loss = classification_loss(outputs[config.original_modality_tag], labels)
+            real_loss = classification_loss(outputs[config.real_modality_tag], labels)
             fake_loss = classification_loss(outputs[config.fake_modality_tag], labels)
             simLoss = simLoss()
             loss =simLoss+real_loss+fake_loss

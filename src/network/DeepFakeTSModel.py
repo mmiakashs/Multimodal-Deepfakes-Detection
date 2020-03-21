@@ -128,9 +128,9 @@ class DeepFakeTSModel(nn.Module):
         for module_network in self.module_networks:
             tm_attn_output, self.module_attn_weights[module_network] = \
                 self.mm_module[module_network](input[config.fake_modality_tag],
-                                               input[config.original_modality_tag],
+                                               input[config.real_modality_tag],
                                                input[config.fake_modality_tag+config.modality_mask_suffix_tag],
-                                               input[config.original_modality_tag+config.modality_mask_suffix_tag])
+                                               input[config.real_modality_tag + config.modality_mask_suffix_tag])
 #             tm_attn_output = torch.sum(tm_attn_output, dim=1).squeeze(dim=1)
             attn_output[module_network] = tm_attn_output
                 # print(f'attn_output[{modality}] size: {attn_output[modality].size()}')

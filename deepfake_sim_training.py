@@ -256,7 +256,7 @@ depth_transforms = transforms.Compose([
 ])
 
 transforms_modalities = {}
-transforms_modalities[config.original_modality_tag] = rgb_transforms
+transforms_modalities[config.real_modality_tag] = rgb_transforms
 transforms_modalities[config.fake_modality_tag] = rgb_transforms
 
 full_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,

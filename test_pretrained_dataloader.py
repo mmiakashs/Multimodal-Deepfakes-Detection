@@ -16,7 +16,7 @@ from src.utils import config
 embed_dir_base_path = '/data/research_data/dfdc_embed'
 
 # Debugging
-modalities = [f'{config.original_modality_tag}',
+modalities = [f'{config.real_modality_tag}',
               f'{config.fake_modality_tag}']
 
 train_dataset = DeepFakePretrainedDataset(data_dir_base_path=embed_dir_base_path,
