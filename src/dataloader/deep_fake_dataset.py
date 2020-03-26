@@ -76,7 +76,7 @@ class DeepFakeDataset(Dataset):
                  window_size=1, window_stride=1,
                  seq_max_len=300, transforms_modalities=None,
                  restricted_ids=None, restricted_labels=None,
-                 metadata_filename='metadata.json'):
+                 metadata_filename='metadata.json', is_fake=False):
 
         self.data_dir_base_path = data_dir_base_path
         self.dataset_type = dataset_type
@@ -87,6 +87,7 @@ class DeepFakeDataset(Dataset):
         self.modalities = modalities
         self.seq_max_len = seq_max_len
         self.metadata_filename = metadata_filename
+        self.is_fake = is_fake
 
         self.window_size = window_size
         if (window_stride == None):
@@ -102,10 +103,8 @@ class DeepFakeDataset(Dataset):
         # self.data = pd.read_json(self.data_dir_base_path+'/'+self.metadata_filename, orient='index')
         self.data = pd.read_csv(self.data_dir_base_path+'/'+self.metadata_filename)
         self.data = self.data[self.data[config.dataset_split_tag] == self.dataset_type]
-        if(self.restricted_labels!=None):
-            for restricted_label in self.restricted_labels:
-                for restricted_id in self.restricted_ids:
-                    self.data = self.data[self.data[restricted_label]!=restricted_id]
+        if(self.is_fake):
+            self.data = self.data[self.data['label'] == config.fake_label_tag]
 
         # self.data.index.name = 'filename'
         self.data.reset_index(inplace=True)
@@ -146,11 +145,13 @@ class DeepFakeDataset(Dataset):
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
+            data['real_filename'] = self.data.loc[idx, config.filename_tag]
             
             modality = config.fake_modality_tag
             data[modality] = torch.zeros_like(seq)
             data[modality + config.modality_seq_len_tag] = 0
             modality_mask.append(True)
+            data['fake_filename'] = 'none'
 
         else:
             modality = config.real_modality_tag
@@ -158,12 +159,14 @@ class DeepFakeDataset(Dataset):
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
+            data['real_filename'] = self.data.loc[idx, config.original_filename_tag]
 
             modality = config.fake_modality_tag
             seq, seq_len = self.get_video_data(idx, modality, config.filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
+            data['fake_filename'] = self.data.loc[idx, config.filename_tag]
 
         modality_mask = torch.from_numpy(np.array(modality_mask)).bool()
         data[config.label_tag] = self.label_name_id[str(data_label)]
@@ -203,7 +206,9 @@ def pad_collate(batch):
         seq_mask = torch.stack(
             [gen_mask(seq_len, seq_max_len)  for seq_len in data[modality + config.modality_seq_len_tag]], dim=0)
         data[modality + config.modality_mask_suffix_tag] = seq_mask
-
+    
+    data['fake_filename'] = [batch[bin]['fake_filename'] for bin in range(batch_size)]
+    data['real_filename'] = [batch[bin]['real_filename'] for bin in range(batch_size)]
     data['label'] = torch.tensor([batch[bin]['label'] for bin in range(batch_size)],
                                 dtype=torch.long)
     data['modality_mask'] = torch.stack([batch[bin]['modality_mask'] for bin in range(batch_size)], dim=0).bool()

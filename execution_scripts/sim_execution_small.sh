@@ -1,0 +1,21 @@
+python3 ../deepfake_sim_training_small.py \
+-lr 0.003 \
+-ng 1 \
+-cdn 1 \
+-sml 9 \
+-bs 8 \
+-ep 100 \
+-enl 2 \
+-fes 256 \
+-lhs 256 \
+-lld 0.3 \
+-uld 0.3 \
+-logbd 'log/sim' \
+-logf 'exe_df_sim_small_dp3_sgd.log' \
+-tbl \
+-tb_wn 'tb_runs/tb_df_sim/small_sgd' \
+-mcp 'df_sim_small' \
+-dfp '/data/research_data/dfdc_train_data' \
+-cm 2 \
+-cl 30 \
+-ot 'sgd'

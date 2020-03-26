@@ -17,6 +17,7 @@ from src.utils.sim_model_training import train_model
 from torchvision.transforms import transforms
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
+from src.utils.model_training_utlis_wtensorboard import load_model
 
 debug_mode = False
 
@@ -135,6 +136,8 @@ parser.add_argument("-cm", "--cycle_mul", help="total number of executed iterati
                     type=int, default=2)
 parser.add_argument("-vpi", "--valid_person_index", help="valid person index",
                     type=int, default=0)
+parser.add_argument("-ot", "--optim_type", help="optimizer_type",
+                    default='adam')
 
 args = parser.parse_args()
 cuda_device_no = args.cuda_device_no
@@ -206,7 +209,7 @@ log_execution(log_base_dir, log_filename,
               f'seq_max_len:{seq_max_len}\n')
 log_execution(log_base_dir, log_filename,
               f'early_stop_patience: {early_stop_patience}, '
-              f'cycle_length:{cycle_length}, cycle_mul: {cycle_mul}\n')
+              f'optim_type: {args.optim_type}, cycle_length:{cycle_length}, cycle_mul: {cycle_mul}\n')
 log_execution(log_base_dir, log_filename,
               f'image_width: {image_width}, image_height: {image_height}\n')
 log_execution(log_base_dir, log_filename,
@@ -241,18 +244,14 @@ if (device == 'cuda'):
     log_execution(log_base_dir, log_filename, f'Current cuda device: {torch.cuda.current_device()}\n\n')
 
 rgb_transforms = transforms.Compose([
-    transforms.Resize((image_height, image_width)),
+    transforms.RandomResizedCrop(image_height),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomVerticalFlip(),
     transforms.ToTensor(),
     transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]
     )])
-depth_transforms = transforms.Compose([
-    transforms.Grayscale(num_output_channels=1),
-    transforms.Resize((image_height, image_width)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.5], [0.5])
-])
 
 transforms_modalities = {}
 transforms_modalities[config.real_modality_tag] = rgb_transforms
@@ -285,6 +284,8 @@ if shuffle_dataset :
     np.random.seed(random_seed)
     np.random.shuffle(indices)
 train_indices, val_indices = indices[split:], indices[:split]
+val_indices = val_indices[:150]
+train_indices = train_indices[:1000]
 
 # Creating PT data samplers and loaders:
 train_sampler = SubsetRandomSampler(train_indices)
@@ -298,66 +299,53 @@ train_dataloader = DataLoader(full_dataset, batch_size=batch_size,
 valid_dataloader = DataLoader(full_dataset, batch_size=batch_size,
                               drop_last=False,
                               sampler=valid_sampler,
-                              collate_fn=pad_collate, num_workers=2)
+                               collate_fn=pad_collate, num_workers=2)
 
 model = DeepFakeSimModel(modalities=modalities,
                         modality_embedding_size=lstm_hidden_size,
                         fine_tune=True)
-if (no_gpus > 1):
-    gpu_list = list(range(torch.cuda.device_count()))
-    model = nn.DataParallel(model, device_ids=gpu_list)
-if (log_model_archi):
-    log_execution(log_base_dir, log_filename, f'\n############ Model ############\n {str(model)}\n',
-                  print_console=False)
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=cycle_length, T_mult=cycle_mul)
-
-log_execution(log_base_dir, log_filename,
-              f'\n\n\tStart execution training \n\n')
-log_execution(log_base_dir, log_filename, f'train_dataloader len: {len(train_dataloader)}\n')
-log_execution(log_base_dir, log_filename, f'valid_dataloader len: {len(valid_dataloader)}\n')
-log_execution(log_base_dir, log_filename,
-              f'train dataset len: {len(train_dataloader.dataset)}, train dataloader len: {len(train_dataloader)}\n')
-log_execution(log_base_dir, log_filename,
-              f'valid dataset len: {len(valid_dataloader.dataset)}, valid dataloader len: {len(valid_dataloader)}\n')
 
 model_save_base_dir = 'trained_model'
-if (resume_checkpoint_filename is not None):
-    resume_checkpoint_filepath = f'{model_save_base_dir}/{resume_checkpoint_filename}'
-    if (os.path.exists(resume_checkpoint_filepath)):
-        resume_training = True
-    else:
-        resume_training = False
+resume_checkpoint_filename = 'best_acc_df_sim_small_1585028782.578091.pth'
+model, optimizer, attrib_dict = load_model(model=model, optimizer=None,
+                                      model_save_base_dir=model_save_base_dir,
+                                      model_checkpoint_filename=resume_checkpoint_filename,
+                                      checkpoint_attribs=checkpoint_attribs,
+                                      show_checkpoint_info=False,
+                                      strict_load=strict_load)
 
-valid_loss, valid_acc, valid_f1 = train_model(model=model,
-                                              optimizer=optimizer,
-                                              scheduler=scheduler,
-                                              modalities=modalities,
-                                              train_dataloader=train_dataloader,
-                                              valid_dataloader=valid_dataloader,
-                                              device=device,
-                                              epochs=epochs_in_each_val_cycle,
-                                              model_save_base_dir=model_save_base_dir,
-                                              model_checkpoint_filename=f'{model_checkpoint_filename}',
-                                              resume_checkpoint_filename=f'{resume_checkpoint_filename}',
-                                              checkpoint_attribs=checkpoint_attribs,
-                                              show_checkpoint_info=False,
-                                              resume_training=resume_training,
-                                              log_filename=log_filename,
-                                              log_base_dir=log_base_dir,
-                                              tensorboard_writer=tb_writer,
-                                              strict_load=False,
-                                              early_stop_patience=early_stop_patience)
+embed_dir_base_path = '/data/research_data/dfdc_embed_small'
+model.to(device)
+model.eval()
+for batch_idx, batch in enumerate(train_dataloader):
+    mask_graph = dict()
+    for modality in modalities:
+        batch[modality] = batch[modality].to(device)
+        batch[modality + config.modality_seq_len_tag] = batch[modality + config.modality_seq_len_tag].to(device)
+        batch[modality + config.modality_mask_suffix_tag] = batch[modality + config.modality_mask_suffix_tag].to(device)
+        mask_graph[modality] = batch['modality_mask'].to(device)
 
-result = f'{valid_acc}, {valid_f1}, final,' \
-         f'{cnn_out_channel}, {kernel_size}, {feature_embed_size}, {lstm_hidden_size}, {lstm_encoder_num_layers},' \
-         f'{lower_layer_dropout}, {upper_layer_dropout}, {module_embedding_nhead}, {multi_modal_nhead},' \
-         f'{mm_embedding_attn_merge_type}' \
-         f'{batch_size}, {lr}, {epochs_in_each_val_cycle}, {seq_max_len}, {window_size}, {window_stride}, ' \
-         f'{data_dir_base_path}, {model_checkpoint_filename}, {log_base_dir}, {log_filename}\n'
+    batch['modality_mask'] = batch['modality_mask'].to(device)
+    batch['modality_mask_graph'] = mask_graph
+    batch['label'] = batch['label'].to(device)
+    labels = batch['label']
+    batch_size = batch['label'].size(0)
 
-log_execution(log_base_dir, final_log_filename, result, print_console=False)
+    modality_output, modality_embed = model(batch)
+    for i in range(batch_size):
+        filename = batch['real_filename'][i]
+        filename = filename.split('.')[0]
+        torch.save(modality_embed[config.real_modality_tag][i], f'{embed_dir_base_path}/{filename}.pt')
+        # print(f'{embed_dir_base_path}/{filename}.pt', modality_embed[config.real_modality_tag][i].size())
+        
+        filename = batch['fake_filename'][i]
+        filename = filename.split('.')[0]
+        torch.save(modality_embed[config.fake_modality_tag][i], f'{embed_dir_base_path}/{filename}.pt')
+        # print(f'{embed_dir_base_path}/{filename}.pt', modality_embed[config.fake_modality_tag][i].size())
+        # break
+    # break
+    if(batch_idx%10==0):
+        print(f'complete the batch {batch_idx}')
 
-log_execution(log_base_dir, log_filename,
-              f'\n\n Final average test accuracy:{valid_acc}, avg f1_score {valid_f1} \n\n')
+print('Feature extraction complete')

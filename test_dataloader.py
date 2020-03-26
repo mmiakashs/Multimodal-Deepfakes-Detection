@@ -37,9 +37,10 @@ train_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
                                 modalities=modalities,
                                 dataset_type=config.train_dataset_tag, transforms_modalities=transforms_modalities,
                                 seq_max_len=300, window_size=5, window_stride=5,
-                                metadata_filename='metadata.csv')
+                                metadata_filename='metadata.csv',
+                                is_fake=True)
 
-train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True, collate_fn=pad_collate, num_workers=20)
+train_dataloader = DataLoader(train_dataset, batch_size=5, shuffle=True, collate_fn=pad_collate, num_workers=2)
 for  batch_id, batch in enumerate(train_dataloader, 0):
     print(batch[config.label_tag])
     for modality in modalities:

@@ -18,7 +18,7 @@ class DeepFakeSimModel(nn.Module):
         if(self.module_network=='resnet18'):
             self.original_model = models.resnet18(pretrained=True)
         if (self.fine_tune):
-            self.set_parameter_requires_grad(self.feature_extractor, self.fine_tune)
+            self.set_parameter_requires_grad(self.original_model, self.fine_tune)
 
         self.encoder = Encoder(original_model=self.original_model,
                           embed_size=self.modality_embedding_size)
@@ -39,10 +39,10 @@ class DeepFakeSimModel(nn.Module):
             shape = input[modality].shape
             tm_input = input[modality].view(-1, shape[-3], shape[-2], shape[-1])
             embed = self.encoder(tm_input)
-            embed = embed.contiguous().view(shape(0), -1, embed.size(-1)).contiguous()
+            embed = embed.contiguous().view(shape[0], -1, embed.size(-1)).contiguous()
 
             modality_embed[modality] = embed
-            output = F.log_softmax(self.fc(embed))
+            output = F.log_softmax(self.fc(embed), dim=1)
             modality_output[modality] = output.mean(dim=1).squeeze(dim=1)
 
         return modality_output, modality_embed

@@ -76,47 +76,50 @@ def model_validation(model, optimizer, valid_dataloader,
                                           strict_load=strict_load)
 
     model.eval()
+    total_samples = 0.0
     for batch_idx, batch in enumerate(valid_dataloader):
 
         mask_graph = dict()
         for modality in modalities:
-            batch[modality] = batch[modality].to(device)
-            batch[modality + config.modality_seq_len_tag] = batch[modality + config.modality_seq_len_tag].to(device)
-            batch[modality + config.modality_mask_suffix_tag] = batch[modality + config.modality_mask_suffix_tag].to(
-                device)
-            mask_graph[modality] = batch['modality_mask'].to(device)
+                batch[modality] = batch[modality].to(device)
+                batch[modality + config.modality_seq_len_tag] = batch[modality + config.modality_seq_len_tag].to(device)
+                batch[modality + config.modality_mask_suffix_tag] = batch[modality + config.modality_mask_suffix_tag].to(device)
+                mask_graph[modality] = batch['modality_mask'].to(device)
 
         batch['modality_mask'] = batch['modality_mask'].to(device)
         batch['modality_mask_graph'] = mask_graph
         batch['label'] = batch['label'].to(device)
         labels = batch['label']
         batch_size = batch['label'].size(0)
+        total_samples += batch_size
 
-        outputs, embeds = model(batch)
+        outputs,embeds = model(batch)
         _, real_preds = torch.max(outputs[config.real_modality_tag], 1)
         _, fake_preds = torch.max(outputs[config.fake_modality_tag], 1)
 
-        batch_corrects = torch.sum(real_preds == labels.data)
-        batch_corrects += torch.sum(fake_preds == labels.data)
+        real_labels = torch.ones_like(labels).data
+        fake_labels = torch.zeros_like(labels).data
+        batch_corrects = torch.sum(real_preds == real_labels)
+        batch_corrects += torch.sum(fake_preds == fake_labels)
 
-        batch_train_acc = batch_corrects / (2. * len(batch))
+        batch_valid_acc = batch_corrects / (2.0*batch_size)
         valid_corrects += batch_corrects
-        f1_scores.append(f1_score(real_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
-        f1_scores.append(f1_score(fake_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
+        f1_scores.append(f1_score(real_preds.cpu().data.numpy(), real_labels.cpu().numpy(), average='micro'))
+        f1_scores.append(f1_score(fake_preds.cpu().data.numpy(), fake_labels.cpu().numpy(), average='micro'))
 
         real_loss = classification_loss(outputs[config.real_modality_tag], labels)
         fake_loss = classification_loss(outputs[config.fake_modality_tag], labels)
-        simLoss = simLoss()
-        loss = simLoss + real_loss + fake_loss
+        sim_loss = simLoss(embeds[config.real_modality_tag],embeds[config.fake_modality_tag])
+        loss =sim_loss+real_loss+fake_loss
 
         valid_loss += loss.item()
-        batch_loss = loss.item() / len(batch)
+        batch_loss = loss.item()/batch_size        
         
         del batch
         torch.cuda.empty_cache()
 
     valid_loss = valid_loss / len(valid_dataloader.dataset)
-    valid_acc = valid_corrects / (2. *len(valid_dataloader.dataset))
+    valid_acc = valid_corrects / (2.0 *total_samples)
     log_execution(log_base_dir, log_filename,
                   '#####> Valid Avg loss: {:.5f}, Acc:{:.5f}, F1: {:.5f}\n'.format(valid_loss, valid_acc,
                                                                                  statistics.mean(f1_scores)))
@@ -188,7 +191,8 @@ def train_model(model, optimizer, scheduler,
                       f'Resume training successfully from resume chekpoint filename: {resume_checkpoint_filename}\n model_checkpoint_filename {model_checkpoint_filename}\n')
 
     classification_loss = nn.CrossEntropyLoss(weight=torch.tensor([0.35,0.35],
-                                                           dtype=torch.float))
+                                                                   dtype=torch.float,
+                                                                  device=device))
     simLoss = SimLoss(weight=0.3)
     improvement_it = 0
     train_dataloader_len = len(train_dataloader)
@@ -210,10 +214,10 @@ def train_model(model, optimizer, scheduler,
         train_loss = 0.0
         train_corrects = 0.0
         f1_scores = []
-
-        model.train()
-
         batch_improvement_it = 0
+        total_samples = 0.0
+        
+        model.train()
         for batch_idx, batch in enumerate(train_dataloader):
             optimizer.zero_grad()
 
@@ -229,26 +233,29 @@ def train_model(model, optimizer, scheduler,
             batch['label'] = batch['label'].to(device)
             labels = batch['label']
             batch_size = batch['label'].size(0)
+            total_samples += batch_size
 
             outputs,embeds = model(batch)
             _, real_preds = torch.max(outputs[config.real_modality_tag], 1)
             _, fake_preds = torch.max(outputs[config.fake_modality_tag], 1)
 
-            batch_corrects = torch.sum(real_preds == labels.data)
-            batch_corrects += torch.sum(fake_preds == labels.data)
+            real_labels = torch.ones_like(labels).data
+            fake_labels = torch.zeros_like(labels).data
+            batch_corrects = torch.sum(real_preds == real_labels)
+            batch_corrects += torch.sum(fake_preds == fake_labels)
 
-            batch_train_acc = batch_corrects / (2. *len(batch))
+            batch_train_acc = batch_corrects / (2.0*batch_size)
             train_corrects += batch_corrects
-            f1_scores.append(f1_score(real_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
-            f1_scores.append(f1_score(fake_preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
+            f1_scores.append(f1_score(real_preds.cpu().data.numpy(), real_labels.cpu().numpy(), average='micro'))
+            f1_scores.append(f1_score(fake_preds.cpu().data.numpy(), fake_labels.cpu().numpy(), average='micro'))
 
             real_loss = classification_loss(outputs[config.real_modality_tag], labels)
             fake_loss = classification_loss(outputs[config.fake_modality_tag], labels)
-            simLoss = simLoss()
-            loss =simLoss+real_loss+fake_loss
+            sim_loss = simLoss(embeds[config.real_modality_tag],embeds[config.fake_modality_tag])
+            loss =sim_loss+real_loss+fake_loss
 
             train_loss += loss.item()
-            batch_loss = loss.item()/len(batch)
+            batch_loss = loss.item()/batch_size
 
             loss.backward()
             optimizer.step()
@@ -259,7 +266,7 @@ def train_model(model, optimizer, scheduler,
 
             if batch_idx % 10 == 0:
                 print('Train Epoch: {} [{}/{} ({:.2f}%)]\tLoss: {:.6f}\tAcc: {:.4f}'.format(
-                    epoch, (batch_idx+1) * batch_size, len(train_dataloader),
+                    epoch, (batch_idx+1), len(train_dataloader),
                            100.0 * float(batch_idx) / float(len(train_dataloader)),
                     batch_loss, batch_train_acc))
 
@@ -283,62 +290,72 @@ def train_model(model, optimizer, scheduler,
                                                                        is_load=False)
 
                     if (tensorboard_writer):
-                        tensorboard_writer.add_scalars(config.tbw_valid_loss, {'batch:':valid_loss}, valid_log_it)
-                        tensorboard_writer.add_scalars(config.tbw_valid_acc, {'batch:':valid_acc}, valid_log_it)
-                        tensorboard_writer.add_scalars(config.tbw_valid_f1, {'batch:':valid_f1}, valid_log_it)
+                        tensorboard_writer.add_scalar(config.tbw_valid_loss, {'batch:':valid_loss}, valid_log_it)
+                        tensorboard_writer.add_scalar(config.tbw_valid_acc, {'batch:':valid_acc}, valid_log_it)
+                        tensorboard_writer.add_scalar(config.tbw_valid_f1, {'batch:':valid_f1}, valid_log_it)
                         valid_log_it += 1
 
                     if(batch_valid_acc_max > batch_valid_acc):
                         checkpoint = {'epoch': epoch,
                                       'state_dict': model.state_dict(),
                                       'optimizer_state': optimizer.state_dict(),
-                                      'train_loss': train_loss,
-                                      'valid_loss': valid_loss,
-                                      'train_acc': train_acc,
-                                      'valid_acc': valid_acc}
+                                      'train_loss': 0,
+                                      'valid_loss': batch_valid_loss,
+                                      'train_acc': 0,
+                                      'valid_acc': batch_valid_acc}
 
                         torch.save(checkpoint, f'{model_save_base_dir}/best_batch_valid_acc_{model_checkpoint_filename}')
                         log_execution(log_base_dir, log_filename,
-                                      '\n####> Epoch: {}, batch{}: batch validation acc increased ({:.5f} --> {:.5f}), Acc: ({:.5f} --> {:.5f}), F1: ({:.5f} --> {:.5f}).  Saving model ...\n'.format(
-                                          epoch, batch_idx, batch_valid_loss_min, batch_valid_loss, batch_valid_acc_max, batch_valid_acc, batch_valid_f1_max,
-                                          batch_valid_f1))
+                                      '\n####> Epoch: {}, batch{}: batch validation acc increased ({:.5f} --> {:.5f}), Acc: ({:.5f} --> {:.5f}).  Saving model ...\n'.format(
+                                          epoch, batch_idx, batch_valid_loss_min, batch_valid_loss, batch_valid_acc_max, batch_valid_acc))
                         log_execution(log_base_dir, log_filename,
                                       f'Best batch valid model save to best_{model_checkpoint_filename}\n')
 
-                        batch_valid_f1_max = batch_valid_f1
                         batch_valid_acc_max = batch_valid_acc
 
                     if (batch_valid_loss_min > batch_valid_loss):
                         checkpoint = {'epoch': epoch,
                                       'state_dict': model.state_dict(),
                                       'optimizer_state': optimizer.state_dict(),
-                                      'train_loss': train_loss,
-                                      'valid_loss': valid_loss,
-                                      'train_acc': train_acc,
-                                      'valid_acc': valid_acc}
+                                      'train_loss': 0,
+                                      'valid_loss': batch_valid_loss,
+                                      'train_acc': 0,
+                                      'valid_acc': batch_valid_acc}
 
                         torch.save(checkpoint, f'{model_save_base_dir}/best_batch_valid_loss_{model_checkpoint_filename}')
                         log_execution(log_base_dir, log_filename,
-                                      '\n####> Epoch: {}, batch{}: batch validation loss decreased ({:.5f} --> {:.5f}), Acc: ({:.5f} --> {:.5f}), F1: ({:.5f} --> {:.5f}).  Saving model ...\n'.format(
+                                      '\n####> Epoch: {}, batch{}: batch validation loss decreased ({:.5f} --> {:.5f}), Acc: ({:.5f} --> {:.5f}).  Saving model ...\n'.format(
                                           epoch, batch_idx, batch_valid_loss_min, batch_valid_loss, batch_valid_acc_max,
-                                          batch_valid_acc, batch_valid_f1_max,
-                                          batch_valid_f1))
+                                          batch_valid_acc))
                         log_execution(log_base_dir, log_filename,
                                       f'Best batch valid model save to best_{model_checkpoint_filename}\n')
 
-                        batch_valid_f1_max = batch_valid_f1
                         batch_valid_loss_min = batch_valid_loss
                
 
         train_loss = train_loss / len(train_dataloader.dataset)
-        train_acc = train_corrects / (2. * len(train_dataloader.dataset))
+        train_acc = train_corrects / (2. * total_samples)
         train_f1 = statistics.mean(f1_scores)
         log_execution(log_base_dir, log_filename,'====> Epoch: {} Train Avg loss: {:.5f}, Acc: {:.5f}, F1: {:.5f}'.format(epoch, train_loss, train_acc,
                                                                                        train_f1))
+        
+        valid_loss, valid_acc, valid_f1 = model_validation(model=model, optimizer=optimizer,
+                                                           valid_dataloader=valid_dataloader,
+                                                           classification_loss=classification_loss,
+                                                           simLoss=simLoss,
+                                                           device=device,
+                                                           modalities=modalities,
+                                                           model_save_base_dir=model_save_base_dir,
+                                                           model_checkpoint_filename=model_checkpoint_filename,
+                                                           checkpoint_attribs=checkpoint_attribs,
+                                                           show_checkpoint_info=show_checkpoint_info,
+                                                           log_base_dir=log_base_dir,
+                                                           log_filename=log_filename,
+                                                           is_load=False)
         if (tensorboard_writer):
-            tensorboard_writer.add_scalars(config.tbw_train_loss, train_loss, epoch)
-            tensorboard_writer.add_scalars(config.tbw_train_acc, train_acc, epoch)
-            tensorboard_writer.add_scalars(config.tbw_train_f1, train_f1, epoch)
+            tensorboard_writer.add_scalar(config.tbw_train_loss, train_loss, epoch)
+            tensorboard_writer.add_scalar(config.tbw_train_acc, train_acc, epoch)
+            tensorboard_writer.add_scalar(config.tbw_train_f1, train_f1, epoch)
             print('tensor board log', epoch)
 
         if train_loss <= train_loss_min:
@@ -366,24 +383,11 @@ def train_model(model, optimizer, scheduler,
                 early_stop_counter = 0
             else:
                 early_stop_counter +=1
-
-        valid_loss, valid_acc, valid_f1 = model_validation(model=model, optimizer=optimizer,
-                                                           valid_dataloader=valid_dataloader,
-                                                           classification_loss=classification_loss,
-                                                           simLoss=simLoss,
-                                                           device=device,
-                                                           modalities=modalities,
-                                                           model_save_base_dir=model_save_base_dir,
-                                                           model_checkpoint_filename=model_checkpoint_filename,
-                                                           checkpoint_attribs=checkpoint_attribs,
-                                                           show_checkpoint_info=show_checkpoint_info,
-                                                           log_base_dir=log_base_dir,
-                                                           log_filename=log_filename,
-                                                           is_load=False)
+        
         if (tensorboard_writer):
-            tensorboard_writer.add_scalars(config.tbw_valid_loss, valid_loss, epoch)
-            tensorboard_writer.add_scalars(config.tbw_valid_acc, valid_acc, epoch)
-            tensorboard_writer.add_scalars(config.tbw_valid_f1, valid_f1, epoch)
+            tensorboard_writer.add_scalar(config.tbw_valid_loss, valid_loss, epoch)
+            tensorboard_writer.add_scalar(config.tbw_valid_acc, valid_acc, epoch)
+            tensorboard_writer.add_scalar(config.tbw_valid_f1, valid_f1, epoch)
 
         if (valid_loss < valid_loss_min):
             checkpoint = {'epoch': epoch,
@@ -422,6 +426,7 @@ def train_model(model, optimizer, scheduler,
 
             tm_valid_f1_max = valid_f1
             tm_valid_acc_max = valid_acc
+            early_stop_counter = 0
 
         if(early_stop_counter>early_stop_patience):
             log_execution(log_base_dir, log_filename, '\n##### Epoch: {}: Training cycle break due to early stop, patience{}\n'.format(epoch, early_stop_counter))

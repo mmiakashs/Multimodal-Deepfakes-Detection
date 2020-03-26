@@ -135,6 +135,8 @@ parser.add_argument("-cm", "--cycle_mul", help="total number of executed iterati
                     type=int, default=2)
 parser.add_argument("-vpi", "--valid_person_index", help="valid person index",
                     type=int, default=0)
+parser.add_argument("-ot", "--optim_type", help="optimizer_type",
+                    default='adam')
 
 args = parser.parse_args()
 cuda_device_no = args.cuda_device_no
@@ -206,7 +208,7 @@ log_execution(log_base_dir, log_filename,
               f'seq_max_len:{seq_max_len}\n')
 log_execution(log_base_dir, log_filename,
               f'early_stop_patience: {early_stop_patience}, '
-              f'cycle_length:{cycle_length}, cycle_mul: {cycle_mul}\n')
+              f'optim_type: {args.optim_type}, cycle_length:{cycle_length}, cycle_mul: {cycle_mul}\n')
 log_execution(log_base_dir, log_filename,
               f'image_width: {image_width}, image_height: {image_height}\n')
 log_execution(log_base_dir, log_filename,
@@ -241,18 +243,14 @@ if (device == 'cuda'):
     log_execution(log_base_dir, log_filename, f'Current cuda device: {torch.cuda.current_device()}\n\n')
 
 rgb_transforms = transforms.Compose([
-    transforms.Resize((image_height, image_width)),
+    transforms.RandomResizedCrop(image_height),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomVerticalFlip(),
     transforms.ToTensor(),
     transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]
     )])
-depth_transforms = transforms.Compose([
-    transforms.Grayscale(num_output_channels=1),
-    transforms.Resize((image_height, image_width)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.5], [0.5])
-])
 
 transforms_modalities = {}
 transforms_modalities[config.real_modality_tag] = rgb_transforms
@@ -285,6 +283,8 @@ if shuffle_dataset :
     np.random.seed(random_seed)
     np.random.shuffle(indices)
 train_indices, val_indices = indices[split:], indices[:split]
+val_indices = val_indices[:150]
+train_indices = train_indices[:1000]
 
 # Creating PT data samplers and loaders:
 train_sampler = SubsetRandomSampler(train_indices)
@@ -310,17 +310,26 @@ if (log_model_archi):
     log_execution(log_base_dir, log_filename, f'\n############ Model ############\n {str(model)}\n',
                   print_console=False)
 
-optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+if(args.optim_type=='sgd'):
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr,
+                               weight_decay=1e-4,
+                               momentum=0.9)
+else:
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+
 scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=cycle_length, T_mult=cycle_mul)
 
 log_execution(log_base_dir, log_filename,
               f'\n\n\tStart execution training \n\n')
+print('indices',len(indices))
+log_execution(log_base_dir, log_filename, f'train_indices len: {len(train_indices)}\n')
+log_execution(log_base_dir, log_filename, f'val_indices len: {len(val_indices)}\n')
 log_execution(log_base_dir, log_filename, f'train_dataloader len: {len(train_dataloader)}\n')
 log_execution(log_base_dir, log_filename, f'valid_dataloader len: {len(valid_dataloader)}\n')
 log_execution(log_base_dir, log_filename,
-              f'train dataset len: {len(train_dataloader.dataset)}, train dataloader len: {len(train_dataloader)}\n')
+              f'train dataset len: {len(train_dataloader)*batch_size}, train dataloader len: {len(train_dataloader)}\n')
 log_execution(log_base_dir, log_filename,
-              f'valid dataset len: {len(valid_dataloader.dataset)}, valid dataloader len: {len(valid_dataloader)}\n')
+              f'valid dataset len: {len(valid_dataloader)*batch_size}, valid dataloader len: {len(valid_dataloader)}\n')
 
 model_save_base_dir = 'trained_model'
 if (resume_checkpoint_filename is not None):
@@ -348,7 +357,8 @@ valid_loss, valid_acc, valid_f1 = train_model(model=model,
                                               log_base_dir=log_base_dir,
                                               tensorboard_writer=tb_writer,
                                               strict_load=False,
-                                              early_stop_patience=early_stop_patience)
+                                              early_stop_patience=early_stop_patience,
+                                              improvement_val_it=20)
 
 result = f'{valid_acc}, {valid_f1}, final,' \
          f'{cnn_out_channel}, {kernel_size}, {feature_embed_size}, {lstm_hidden_size}, {lstm_encoder_num_layers},' \
