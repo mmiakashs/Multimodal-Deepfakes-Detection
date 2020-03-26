@@ -18,7 +18,8 @@ class DeepFakeTSModel(nn.Module):
                  dropout=0.1,
                  activation="relu",
                  is_guiding=False,
-                 num_activity_types=2):
+                 num_activity_types=2,
+                 is_pretrained_feature=False):
         super(DeepFakeTSModel, self).__init__()
 
         self.mm_module_properties = mm_module_properties
@@ -38,6 +39,7 @@ class DeepFakeTSModel(nn.Module):
         self.num_module_networks = len(self.module_networks)
         self.is_guiding = is_guiding
         self.num_activity_types = 2
+        self.is_pretrained_feature = is_pretrained_feature
 
         print('module_networks', self.module_networks)
         self.mm_module = nn.ModuleDict()
@@ -59,7 +61,8 @@ class DeepFakeTSModel(nn.Module):
                                                   pool_fe_kernel=self.mm_module_properties[modality]['feature_pooling_kernel'],
                                                   pool_fe_stride=self.mm_module_properties[modality]['feature_pooling_stride'],
                                                   pool_fe_type=self.mm_module_properties[modality]['feature_pooling_type'],
-                                                  is_guiding=self.is_guiding)
+                                                  is_guiding=self.is_guiding,
+                                                  is_pretrained_feature = self.is_pretrained_feature)
 
             if (self.mm_module_properties[modality]['lstm_bidirectional']):
                 self.lstm_bidirectional = True

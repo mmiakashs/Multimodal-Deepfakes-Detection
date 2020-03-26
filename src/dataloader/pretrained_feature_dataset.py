@@ -36,7 +36,7 @@ class DeepFakePretrainedDataset(Dataset):
     def gen_mask(self, seq_len, max_len):
         return torch.arange(max_len) > seq_len
     
-    def get_embedding(self, idx, modality, filename_tag):
+    def get_embedding(self, idx, filename_tag):
         filename = f'{self.data.loc[idx, filename_tag].split(".")[0]}.pt'
         data_filepath = f'{self.data_dir_base_path}/{filename}'
         seq = torch.load(data_filepath)

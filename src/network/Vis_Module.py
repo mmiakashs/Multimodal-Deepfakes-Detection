@@ -13,7 +13,8 @@ class Vis_Module(nn.Module):
                  pool_fe_kernel=None, pool_fe_stride=None, pool_fe_type='max', lstm_dropout=0.1,
                  adaptive_pool_tar_squze_mul=None,
                  attention_type='mm', is_attention=False,
-                 is_guiding=False):
+                 is_guiding=False,
+                 is_pretrained_feature=False):
 
         super(Vis_Module, self).__init__()
 
@@ -38,6 +39,7 @@ class Vis_Module(nn.Module):
         self.attention_type = attention_type
         self.is_attention = is_attention
         self.is_guiding = is_guiding
+        self.is_pretrained_feature = is_pretrained_feature
 
         self.feature_extractor = models.resnet18(pretrained=True)
         if (self.fine_tune):
@@ -102,17 +104,21 @@ class Vis_Module(nn.Module):
 
     def fake_embed_guided_by_real(self, fake_input, real_input,
                                   fake_input_mask, real_input_mask):
-        real_x = real_input.view(-1, real_input.size(-3), real_input.size(-2), real_input.size(-1)).contiguous()
-        fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
+        if(self.is_pretrained_feature):
+            real_x = real_input.view(-1, real_input.size(-3), real_input.size(-2), real_input.size(-1)).contiguous()
+            fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
 
-        real_embed = self.feature_extractor(real_x).contiguous()
-        fake_embed = self.feature_extractor(fake_x).contiguous()
-        if (self.batch_first):
-            real_embed = real_embed.contiguous().view(real_input.size(0), -1, real_embed.size(-1))
-            fake_embed = fake_embed.contiguous().view(fake_input.size(0), -1, fake_embed.size(-1))
+            real_embed = self.feature_extractor(real_x).contiguous()
+            fake_embed = self.feature_extractor(fake_x).contiguous()
+            if (self.batch_first):
+                real_embed = real_embed.contiguous().view(real_input.size(0), -1, real_embed.size(-1))
+                fake_embed = fake_embed.contiguous().view(fake_input.size(0), -1, fake_embed.size(-1))
+            else:
+                real_embed = real_embed.view(-1, real_input.size(1), real_embed.size(-1))
+                fake_embed = fake_embed.view(-1, fake_input.size(1), fake_embed.size(-1))
         else:
-            real_embed = real_embed.view(-1, real_input.size(1), real_embed.size(-1))
-            fake_embed = fake_embed.view(-1, fake_input.size(1), fake_embed.size(-1))
+            real_embed = real_input
+            fake_embed = fake_input
         real_embed = real_embed.contiguous()
         fake_embed = fake_embed.contiguous()
 

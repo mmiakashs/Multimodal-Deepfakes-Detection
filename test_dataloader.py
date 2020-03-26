@@ -9,6 +9,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataloader import DataLoader
 from torchvision.transforms import transforms
 
+from src.dataloader.pretrained_feature_dataset import DeepFakePretrainedDataset
 from src.utils import config
 from src.dataloader.deep_fake_dataset import *
 
@@ -33,12 +34,16 @@ modalities = [f'{config.real_modality_tag}',
 transforms_modalities = {modalities[0]: rgb_transforms,
                          modalities[1]: rgb_transforms}
 
-train_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
-                                modalities=modalities,
-                                dataset_type=config.train_dataset_tag, transforms_modalities=transforms_modalities,
-                                seq_max_len=300, window_size=5, window_stride=5,
-                                metadata_filename='metadata.csv',
-                                is_fake=True)
+# train_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
+#                                 modalities=modalities,
+#                                 dataset_type=config.train_dataset_tag, transforms_modalities=transforms_modalities,
+#                                 seq_max_len=300, window_size=5, window_stride=5,
+#                                 metadata_filename='metadata.csv',
+#                                 is_fake=True)
+train_dataset = DeepFakePretrainedDataset(data_dir_base_path='/data/research_data/dfdc_embed_small',
+                                   modalities=modalities,
+                                   dataset_type='train',
+                                   metadata_filename='metadata.csv')
 
 train_dataloader = DataLoader(train_dataset, batch_size=5, shuffle=True, collate_fn=pad_collate, num_workers=2)
 for  batch_id, batch in enumerate(train_dataloader, 0):

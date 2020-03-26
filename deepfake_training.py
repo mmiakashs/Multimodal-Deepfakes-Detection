@@ -10,6 +10,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 
 from src.dataloader.deep_fake_dataset import *
+from src.dataloader.pretrained_feature_dataset import DeepFakePretrainedDataset
 from src.network.DeepFakeTSModel import DeepFakeTSModel
 from src.utils import config
 from src.utils.log import *
@@ -135,6 +136,8 @@ parser.add_argument("-cm", "--cycle_mul", help="total number of executed iterati
                     type=int, default=2)
 parser.add_argument("-vpi", "--valid_person_index", help="valid person index",
                     type=int, default=0)
+parser.add_argument("-ipt", "--is_pretrained_feature", help="is_pretrained_feature",
+                    action="store_true", default=False)
 
 args = parser.parse_args()
 cuda_device_no = args.cuda_device_no
@@ -200,7 +203,8 @@ if (tb_log):
 
 log_execution(log_base_dir, log_filename,
               f'validation type: {validation_type}, '
-              f'valid_person_index:{valid_person_index}, is_guiding: {args.is_guiding} \n')
+              f'valid_person_index:{valid_person_index}, '
+              f'is_guiding: {args.is_guiding}, is_pretrained_feature: {args.is_pretrained_feature}\n')
 log_execution(log_base_dir, log_filename,
               f'window size: {window_size}, window_stride: {window_stride}, '
               f'seq_max_len:{seq_max_len}\n')
@@ -278,14 +282,20 @@ for modality in module_networks:
     mm_module_properties[modality]['feature_pooling_type'] = 'max'
     mm_module_properties[modality]['lstm_dropout'] = 0.0
 
-full_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
-                               modalities=modalities,
-                               restricted_ids=None,
-                               restricted_labels=None,
-                               dataset_type='train', seq_max_len=seq_max_len,
-                               window_size=window_size, window_stride=window_stride,
-                               transforms_modalities=transforms_modalities,
-                               metadata_filename='metadata.csv')
+if(args.is_pretrained_feature):
+    full_dataset = DeepFakePretrainedDataset(data_dir_base_path=data_dir_base_path,
+                                   modalities=modalities,
+                                   dataset_type='train',
+                                   metadata_filename='metadata.csv')
+else:
+    full_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
+                                   modalities=modalities,
+                                   restricted_ids=None,
+                                   restricted_labels=None,
+                                   dataset_type='train', seq_max_len=seq_max_len,
+                                   window_size=window_size, window_stride=window_stride,
+                                   transforms_modalities=transforms_modalities,
+                                   metadata_filename='metadata.csv')
 
 num_labels = full_dataset.num_labels
 label_names = full_dataset.label_names
@@ -329,7 +339,8 @@ model = DeepFakeTSModel(mm_module_properties=mm_module_properties,
                         mm_embedding_attn_merge_type=mm_embedding_attn_merge_type,
                         dropout=upper_layer_dropout,
                         is_guiding=args.is_guiding,
-                        module_networks=module_networks)
+                        module_networks=module_networks,
+                        is_pretrained_feature=args.is_pretrained_feature)
 if (no_gpus > 1):
     gpu_list = list(range(torch.cuda.device_count()))
     model = nn.DataParallel(model, device_ids=gpu_list)
