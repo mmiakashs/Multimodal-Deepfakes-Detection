@@ -104,7 +104,7 @@ class Vis_Module(nn.Module):
 
     def fake_embed_guided_by_real(self, fake_input, real_input,
                                   fake_input_mask, real_input_mask):
-        if(self.is_pretrained_feature):
+        if(not self.is_pretrained_feature):
             real_x = real_input.view(-1, real_input.size(-3), real_input.size(-2), real_input.size(-1)).contiguous()
             fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
 

@@ -9,8 +9,8 @@ from torch import nn
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 
-from src.dataloader.deep_fake_dataset import *
-from src.dataloader.pretrained_feature_dataset import DeepFakePretrainedDataset
+from src.dataloader.deep_fake_dataset import DeepFakeDataset
+from src.dataloader.pretrained_feature_dataset import *
 from src.network.DeepFakeTSModel import DeepFakeTSModel
 from src.utils import config
 from src.utils.log import *
@@ -138,6 +138,8 @@ parser.add_argument("-vpi", "--valid_person_index", help="valid person index",
                     type=int, default=0)
 parser.add_argument("-ipt", "--is_pretrained_feature", help="is_pretrained_feature",
                     action="store_true", default=False)
+parser.add_argument("-ist", "--is_small_training", help="is_small_training",
+                    action="store_true", default=False)
 
 args = parser.parse_args()
 cuda_device_no = args.cuda_device_no
@@ -203,7 +205,7 @@ if (tb_log):
 
 log_execution(log_base_dir, log_filename,
               f'validation type: {validation_type}, '
-              f'valid_person_index:{valid_person_index}, '
+              f'valid_person_index:{valid_person_index}, is_small_training: {args.is_small_training}'
               f'is_guiding: {args.is_guiding}, is_pretrained_feature: {args.is_pretrained_feature}\n')
 log_execution(log_base_dir, log_filename,
               f'window size: {window_size}, window_stride: {window_stride}, '
@@ -286,7 +288,8 @@ if(args.is_pretrained_feature):
     full_dataset = DeepFakePretrainedDataset(data_dir_base_path=data_dir_base_path,
                                    modalities=modalities,
                                    dataset_type='train',
-                                   metadata_filename='metadata.csv')
+                                   metadata_filename='metadata.csv',
+                                   is_fake=True)
 else:
     full_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
                                    modalities=modalities,
@@ -314,6 +317,9 @@ if shuffle_dataset :
     np.random.seed(random_seed)
     np.random.shuffle(indices)
 train_indices, val_indices = indices[split:], indices[:split]
+if(args.is_small_training):
+    val_indices = val_indices[:150]
+    train_indices = train_indices[:1000]
 
 # Creating PT data samplers and loaders:
 train_sampler = SubsetRandomSampler(train_indices)
@@ -322,12 +328,12 @@ valid_sampler = SubsetRandomSampler(val_indices)
 train_dataloader = DataLoader(full_dataset, batch_size=batch_size,
                               drop_last=False,
                               sampler=train_sampler,
-                              collate_fn=pad_collate, num_workers=2)
+                              collate_fn=pad_collate)
 
 valid_dataloader = DataLoader(full_dataset, batch_size=batch_size,
                               drop_last=False,
                               sampler=valid_sampler,
-                              collate_fn=pad_collate, num_workers=2)
+                              collate_fn=pad_collate)
 
 model = DeepFakeTSModel(mm_module_properties=mm_module_properties,
                         modalities=modalities,

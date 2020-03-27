@@ -15,13 +15,14 @@ python3 ../deepfake_training.py \
 -cout 64 \
 -mmattn_type 'concat' \
 -logbd 'log' \
--logf 'exe_dfts_pt_h22_dp3.log' \
+-logf 'exe_dfts_st_pt_h22_dp3.log' \
 -tbl \
--tb_wn 'tb_runs/tb_dfts_pt/h22_dp3' \
+-tb_wn 'tb_runs/tb_dfts_st_pt/h22_dp3' \
 -mcp 'dfts_pt_' \
 -lstm_bi \
 -dfp '/data/research_data/dfdc_embed_small' \
 -is_guiding \
 -cm 2 \
 -cl 50 \
--ipt
+-ipt \
+-ist

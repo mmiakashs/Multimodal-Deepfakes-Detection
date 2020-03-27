@@ -14,12 +14,14 @@ class DeepFakePretrainedDataset(Dataset):
 
     def __init__(self, data_dir_base_path,
                  modalities, dataset_type='train',
-                 metadata_filename='metadata.json'):
+                 metadata_filename='metadata.json',
+                 is_fake=False):
 
         self.data_dir_base_path = data_dir_base_path
         self.dataset_type = dataset_type
         self.modalities = modalities
         self.metadata_filename = metadata_filename
+        self.is_fake = is_fake
 
         self.load_data()
         self.label_names = self.data.label.unique()
@@ -28,6 +30,8 @@ class DeepFakePretrainedDataset(Dataset):
     def load_data(self):
         self.data = pd.read_csv(self.data_dir_base_path+'/'+self.metadata_filename)
         self.data = self.data[self.data[config.dataset_split_tag] == self.dataset_type]
+        if(self.is_fake):
+            self.data = self.data[self.data['label'] == config.fake_label_tag]
         self.data.reset_index(inplace=True)
 
     def __len__(self):
@@ -39,7 +43,7 @@ class DeepFakePretrainedDataset(Dataset):
     def get_embedding(self, idx, filename_tag):
         filename = f'{self.data.loc[idx, filename_tag].split(".")[0]}.pt'
         data_filepath = f'{self.data_dir_base_path}/{filename}'
-        seq = torch.load(data_filepath)
+        seq = torch.load(data_filepath).detach()
 
         return seq, seq.size(0)
 
@@ -54,7 +58,7 @@ class DeepFakePretrainedDataset(Dataset):
         # print(f'************ Start Data Loader for {idx} ************')
         if(data_label==config.real_label_tag):
             modality = config.real_modality_tag
-            seq, seq_len = self.get_embedding(idx, modality, config.filename_tag)
+            seq, seq_len = self.get_embedding(idx, config.filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
@@ -66,13 +70,13 @@ class DeepFakePretrainedDataset(Dataset):
 
         else:
             modality = config.real_modality_tag
-            seq, seq_len = self.get_embedding(idx, modality, config.original_filename_tag)
+            seq, seq_len = self.get_embedding(idx, config.original_filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
 
             modality = config.fake_modality_tag
-            seq, seq_len = self.get_embedding(idx, modality, config.filename_tag)
+            seq, seq_len = self.get_embedding(idx, config.filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)

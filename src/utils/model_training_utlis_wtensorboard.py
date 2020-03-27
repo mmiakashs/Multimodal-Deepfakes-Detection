@@ -415,9 +415,9 @@ def train_model(model, optimizer, scheduler,
                                                                        is_load=False)
 
                     if (tensorboard_writer):
-                        tensorboard_writer.add_scalars(config.tbw_valid_loss, {'batch:':valid_loss}, valid_log_it)
-                        tensorboard_writer.add_scalars(config.tbw_valid_acc, {'batch:':valid_acc}, valid_log_it)
-                        tensorboard_writer.add_scalars(config.tbw_valid_f1, {'batch:':valid_f1}, valid_log_it)
+                        tensorboard_writer.add_scalar(config.tbw_valid_loss, {'batch:':valid_loss}, valid_log_it)
+                        tensorboard_writer.add_scalar(config.tbw_valid_acc, {'batch:':valid_acc}, valid_log_it)
+                        tensorboard_writer.add_scalar(config.tbw_valid_f1, {'batch:':valid_f1}, valid_log_it)
                         valid_log_it += 1
 
                     if(batch_valid_acc_max > batch_valid_acc):
@@ -467,10 +467,23 @@ def train_model(model, optimizer, scheduler,
         train_f1 = statistics.mean(f1_scores)
         log_execution(log_base_dir, log_filename,'====> Epoch: {} Train Avg loss: {:.5f}, Acc: {:.5f}, F1: {:.5f}'.format(epoch, train_loss, train_acc,
                                                                                        train_f1))
+
+        valid_loss, valid_acc, valid_f1 = model_validation(model=model, optimizer=optimizer,
+                                                           valid_dataloader=valid_dataloader,
+                                                           loss_function=loss_function,
+                                                           device=device,
+                                                           modalities=modalities,
+                                                           model_save_base_dir=model_save_base_dir,
+                                                           model_checkpoint_filename=model_checkpoint_filename,
+                                                           checkpoint_attribs=checkpoint_attribs,
+                                                           show_checkpoint_info=show_checkpoint_info,
+                                                           log_base_dir=log_base_dir,
+                                                           log_filename=log_filename,
+                                                           is_load=False)
         if (tensorboard_writer):
-            tensorboard_writer.add_scalars(config.tbw_train_loss, train_loss, epoch)
-            tensorboard_writer.add_scalars(config.tbw_train_acc, train_acc, epoch)
-            tensorboard_writer.add_scalars(config.tbw_train_f1, train_f1, epoch)
+            tensorboard_writer.add_scalar(config.tbw_train_loss, train_loss, epoch)
+            tensorboard_writer.add_scalar(config.tbw_train_acc, train_acc, epoch)
+            tensorboard_writer.add_scalar(config.tbw_train_f1, train_f1, epoch)
             print('tensor board log', epoch)
 
         if train_loss <= train_loss_min:
@@ -498,23 +511,11 @@ def train_model(model, optimizer, scheduler,
                 early_stop_counter = 0
             else:
                 early_stop_counter +=1
-
-        valid_loss, valid_acc, valid_f1 = model_validation(model=model, optimizer=optimizer,
-                                                           valid_dataloader=valid_dataloader,
-                                                           loss_function=loss_function,
-                                                           device=device,
-                                                           modalities=modalities,
-                                                           model_save_base_dir=model_save_base_dir,
-                                                           model_checkpoint_filename=model_checkpoint_filename,
-                                                           checkpoint_attribs=checkpoint_attribs,
-                                                           show_checkpoint_info=show_checkpoint_info,
-                                                           log_base_dir=log_base_dir,
-                                                           log_filename=log_filename,
-                                                           is_load=False)
+        
         if (tensorboard_writer):
-            tensorboard_writer.add_scalars(config.tbw_valid_loss, valid_loss, epoch)
-            tensorboard_writer.add_scalars(config.tbw_valid_acc, valid_acc, epoch)
-            tensorboard_writer.add_scalars(config.tbw_valid_f1, valid_f1, epoch)
+            tensorboard_writer.add_scalar(config.tbw_valid_loss, valid_loss, epoch)
+            tensorboard_writer.add_scalar(config.tbw_valid_acc, valid_acc, epoch)
+            tensorboard_writer.add_scalar(config.tbw_valid_f1, valid_f1, epoch)
 
         if (valid_loss < valid_loss_min):
             checkpoint = {'epoch': epoch,

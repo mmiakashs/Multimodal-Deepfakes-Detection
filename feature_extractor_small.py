@@ -318,7 +318,7 @@ model, optimizer, attrib_dict = load_model(model=model, optimizer=None,
 embed_dir_base_path = '/data/research_data/dfdc_embed_small'
 model.to(device)
 model.eval()
-for batch_idx, batch in enumerate(train_dataloader):
+for batch_idx, batch in enumerate(valid_dataloader):
     mask_graph = dict()
     for modality in modalities:
         batch[modality] = batch[modality].to(device)
