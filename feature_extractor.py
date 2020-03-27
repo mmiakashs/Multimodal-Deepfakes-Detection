@@ -29,7 +29,7 @@ embed_dir_base_path = '/data/research_data/dfdc_embed'
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-sfn", "--start_file_num", help="start_file_num",
-                    type=int, default=1)
+                    type=int, default=-1)
 parser.add_argument("-cdn", "--cuda_device_no", help="cuda device no",
                     type=int, default=0)
 args = parser.parse_args()
@@ -52,11 +52,17 @@ total_parsing = 0
 start_time = time.time()
 for count, filename in enumerate(sorted(os.listdir(data_dir_base_path), reverse=False)):
 #         print('filename',filename)tm_filename = filename.split('.')[0]
+    ext = filename.split('.')[1]
+    tm_filename = filename.split('.')[0]
+    if(ext=='csv'):
+        continue
     if(total_parsing<=args.start_file_num):
         total_parsing += 1
         continue
-    if(os.path.exists(f'{embed_dir_base_path}/{filename}.pt')):
+    if(os.path.exists(f'{embed_dir_base_path}/{tm_filename}.pt')):
         total_parsing += 1
+        if(total_parsing%1000==0):
+            print(f'parsing completed:{total_parsing}')
         continue
     video = Video(f'{data_dir_base_path}/{filename}', transforms=rgb_transforms)
     seq, seq_len = video.get_all_frames()
