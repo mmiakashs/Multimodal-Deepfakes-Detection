@@ -289,7 +289,8 @@ if(args.is_pretrained_feature):
                                    modalities=modalities,
                                    dataset_type='train',
                                    metadata_filename='metadata.csv',
-                                   is_fake=False)
+                                   is_fake=False,
+                                   is_guiding = args.is_guiding)
 else:
     full_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
                                    modalities=modalities,

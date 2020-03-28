@@ -194,16 +194,22 @@ class Vis_Module(nn.Module):
 
     def fake_embed_self_guide(self, fake_input,
                               fake_input_mask):
-        fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
 
-        fake_embed = self.feature_extractor(fake_x).contiguous()
-        if (self.batch_first):
-            fake_embed = fake_embed.contiguous().view(fake_input.size(0), -1, fake_embed.size(-1))
+        if(not self.is_pretrained_feature):
+            fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
+    
+            fake_embed = self.feature_extractor(fake_x).contiguous()
+            if (self.batch_first):
+                fake_embed = fake_embed.contiguous().view(fake_input.size(0), -1, fake_embed.size(-1))
+            else:
+                fake_embed = fake_embed.view(-1, fake_input.size(1), fake_embed.size(-1))
+            fake_embed = fake_embed.contiguous()
+            fake_embed = self.fe_dropout(self.fe_relu(fake_embed))
         else:
-            fake_embed = fake_embed.view(-1, fake_input.size(1), fake_embed.size(-1))
-        fake_embed = fake_embed.contiguous()
-
-        fake_embed = self.fe_dropout(self.fe_relu(fake_embed))
+            fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
+            fake_embed = self.fe_pool(fake_x)
+            fake_embed = fake_embed.view(fake_input.size(0), fake_input.size(1), -1)
+            fake_embed = self.fe_fc(fake_embed)
 
         if (self.pool_fe_kernel):
             fake_embed = fake_embed.transpose(1, 2).contiguous()
@@ -224,7 +230,6 @@ class Vis_Module(nn.Module):
 
         if (self.is_attention):
             fake_input_mask = fake_input_mask[:, :fake_r_output.size(1)]
-
             # transpose batch and sequence (B x S x ..) --> (S x B x ..)
             fake_r_output = fake_r_output.transpose(0, 1).contiguous()
 
@@ -237,7 +242,6 @@ class Vis_Module(nn.Module):
             attn_output = torch.sum(attn_output, dim=1).squeeze(dim=1)
             attn_output = F.relu(attn_output)
             attn_output = self.module_fe_dropout(attn_output)
-
         else:
             attn_output = fake_r_output[:, -1, :]
 

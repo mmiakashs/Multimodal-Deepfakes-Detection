@@ -15,13 +15,15 @@ class DeepFakePretrainedDataset(Dataset):
     def __init__(self, data_dir_base_path,
                  modalities, dataset_type='train',
                  metadata_filename='metadata.json',
-                 is_fake=False):
+                 is_fake=False,
+                 is_guiding=False):
 
         self.data_dir_base_path = data_dir_base_path
         self.dataset_type = dataset_type
         self.modalities = modalities
         self.metadata_filename = metadata_filename
         self.is_fake = is_fake
+        self.is_guiding = is_guiding
 
         self.load_data()
         self.label_names = self.data.label.unique()
@@ -54,7 +56,6 @@ class DeepFakePretrainedDataset(Dataset):
         return torch.arange(max_len) > seq_len
     
     def get_embedding(self, idx, filename_tag):
-#         print(self.data.loc[idx, filename_tag], self.data.loc[idx, config.label_tag])
         filename = f'{self.data.loc[idx, filename_tag].split(".")[0]}.pt'
         data_filepath = f'{self.data_dir_base_path}/{filename}'
         seq = torch.load(data_filepath)
@@ -71,30 +72,37 @@ class DeepFakePretrainedDataset(Dataset):
         modality_mask = []
         
         # print(f'************ Start Data Loader for {idx} ************')
-        if(data_label==config.real_label_tag):
-            modality = config.real_modality_tag
+        if(self.is_guiding):
+            modality = config.fake_modality_tag
             seq, seq_len = self.get_embedding(idx, config.filename_tag)
             data[modality] = seq
             data[modality + config.modality_seq_len_tag] = seq_len
             modality_mask.append(True if seq_len == 0 else False)
-            
-            modality = config.fake_modality_tag
-            data[modality] = seq
-            data[modality + config.modality_seq_len_tag] = seq_len
-            modality_mask.append(True if seq_len == 0 else False)
-
         else:
-            modality = config.real_modality_tag
-            seq, seq_len = self.get_embedding(idx, config.original_filename_tag)
-            data[modality] = seq
-            data[modality + config.modality_seq_len_tag] = seq_len
-            modality_mask.append(True if seq_len == 0 else False)
+            if(data_label==config.real_label_tag):
+                modality = config.real_modality_tag
+                seq, seq_len = self.get_embedding(idx, config.filename_tag)
+                data[modality] = seq
+                data[modality + config.modality_seq_len_tag] = seq_len
+                modality_mask.append(True if seq_len == 0 else False)
 
-            modality = config.fake_modality_tag
-            seq, seq_len = self.get_embedding(idx, config.filename_tag)
-            data[modality] = seq
-            data[modality + config.modality_seq_len_tag] = seq_len
-            modality_mask.append(True if seq_len == 0 else False)
+                modality = config.fake_modality_tag
+                data[modality] = seq
+                data[modality + config.modality_seq_len_tag] = seq_len
+                modality_mask.append(True if seq_len == 0 else False)
+
+            else:
+                modality = config.real_modality_tag
+                seq, seq_len = self.get_embedding(idx, config.original_filename_tag)
+                data[modality] = seq
+                data[modality + config.modality_seq_len_tag] = seq_len
+                modality_mask.append(True if seq_len == 0 else False)
+
+                modality = config.fake_modality_tag
+                seq, seq_len = self.get_embedding(idx, config.filename_tag)
+                data[modality] = seq
+                data[modality + config.modality_seq_len_tag] = seq_len
+                modality_mask.append(True if seq_len == 0 else False)
 
         modality_mask = torch.from_numpy(np.array(modality_mask)).bool()
         data[config.label_tag] = self.label_name_id[str(data_label)]
@@ -112,8 +120,7 @@ class DeepFakePretrainedDataset(Dataset):
         temp_dict_id_type = { i : label_names[i] for i in range(len(label_names))}
         return num_labels, temp_dict_type_id, temp_dict_id_type
 
-modalities = [config.real_modality_tag,
-              config.fake_modality_tag]
+modalities = [config.fake_modality_tag]
 
 def gen_mask(seq_len, max_len):
     return torch.arange(max_len) > seq_len
@@ -140,23 +147,3 @@ def pad_collate(batch):
     data['modality_mask'] = torch.stack([batch[bin]['modality_mask'] for bin in range(batch_size)], dim=0).bool()
     return data
 
-
-def pad_collate_fake(batch):
-    batch_size = len(batch)
-    data = {}
-
-    for modality in modalities:
-        data[modality] = pad_sequence([batch[bin][modality] for bin in range(batch_size)], batch_first=True)
-        data[modality + config.modality_seq_len_tag] = torch.tensor(
-            [batch[bin][modality + config.modality_seq_len_tag] for bin in range(batch_size)],
-            dtype=torch.float)
-
-        seq_max_len = data[modality + config.modality_seq_len_tag].max()
-        seq_mask = torch.stack(
-            [gen_mask(seq_len, seq_max_len) for seq_len in data[modality + config.modality_seq_len_tag]], dim=0)
-        data[modality + config.modality_mask_suffix_tag] = seq_mask
-
-    data['label'] = torch.tensor([batch[bin]['label'] for bin in range(batch_size)],
-                                 dtype=torch.long)
-    data['modality_mask'] = torch.stack([batch[bin]['modality_mask'] for bin in range(batch_size)], dim=0).bool()
-    return data
