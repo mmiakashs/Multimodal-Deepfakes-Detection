@@ -47,6 +47,9 @@ class Vis_Module(nn.Module):
 
         num_ftrs = self.feature_extractor.fc.in_features
         self.feature_extractor.fc = nn.Linear(num_ftrs, self.feature_embed_size)
+        
+        self.fe_pool = nn.AdaptiveAvgPool2d((1,1))
+        self.fe_fc = nn.Linear(2048, self.feature_embed_size)
 
         self.fe_relu = nn.ReLU()
         self.fe_dropout = nn.Dropout(p=self.dropout)
@@ -117,8 +120,18 @@ class Vis_Module(nn.Module):
                 real_embed = real_embed.view(-1, real_input.size(1), real_embed.size(-1))
                 fake_embed = fake_embed.view(-1, fake_input.size(1), fake_embed.size(-1))
         else:
-            real_embed = real_input
-            fake_embed = fake_input
+            real_x = real_input.view(-1, real_input.size(-3), real_input.size(-2), real_input.size(-1)).contiguous()
+            fake_x = fake_input.view(-1, fake_input.size(-3), fake_input.size(-2), fake_input.size(-1)).contiguous()
+            
+            real_embed = self.fe_pool(real_x)
+            fake_embed = self.fe_pool(fake_x)
+            
+            real_embed = real_embed.view(real_input.size(0), real_input.size(1), -1)
+            fake_embed = fake_embed.view(fake_input.size(0), fake_input.size(1), -1)
+            
+            real_embed = self.fe_fc(real_embed)
+            fake_embed = self.fe_fc(fake_embed)
+            
         real_embed = real_embed.contiguous()
         fake_embed = fake_embed.contiguous()
 

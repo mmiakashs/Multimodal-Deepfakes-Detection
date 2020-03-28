@@ -375,7 +375,7 @@ def train_model(model, optimizer, scheduler,
             _, preds = torch.max(outputs, 1)
 
             batch_corrects = torch.sum(preds == labels.data)
-            batch_train_acc = batch_corrects / len(batch)
+            batch_train_acc = batch_corrects / batch_size
             train_corrects += batch_corrects
             f1_scores.append(f1_score(preds.cpu().data.numpy(), labels.cpu().data.numpy(), average='micro'))
 

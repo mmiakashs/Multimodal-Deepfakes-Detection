@@ -22,10 +22,16 @@ modalities = [f'{config.real_modality_tag}',
 train_dataset = DeepFakePretrainedDataset(data_dir_base_path=embed_dir_base_path,
                                 modalities=modalities,
                                 dataset_type=config.train_dataset_tag,
-                                metadata_filename='metadata.csv')
+                                metadata_filename='metadata.csv',
+                                is_fake=False)
+print('length train dataset',len(train_dataset.data))
+print('label_names', train_dataset.label_names)
 
-train_dataloader = DataLoader(train_dataset, batch_size=10, shuffle=True, collate_fn=pad_collate, num_workers=20)
+train_dataloader = DataLoader(train_dataset, batch_size=1, shuffle=False, collate_fn=pad_collate)
 for batch_id, batch in enumerate(train_dataloader, 0):
+    print('batch_id', batch_id)
+#     if(batch_id<66486):
+#         continue
     print(batch[config.label_tag])
     for modality in modalities:
         if(batch[modality] is not None):
@@ -35,6 +41,6 @@ for batch_id, batch in enumerate(train_dataloader, 0):
             print(f'{modality} size: None')
             print(f'{modality} mask size: 0')
             
-    print(f'modality mask size:', batch['modality_mask'].size())
-    print(f'label size:', batch['label'].size())
-    print(batch["modality_mask"])
+#     print(f'modality mask size:', batch['modality_mask'].size())
+#     print(f'label size:', batch['label'].size())
+#     print(batch["modality_mask"])

@@ -4,7 +4,7 @@ python3 ../deepfake_training.py \
 -cdn 1 \
 -sml 9 \
 -bs 64 \
--ep 500 \
+-ep 100 \
 -enl 2 \
 -fes 256 \
 -lhs 256 \
@@ -24,5 +24,5 @@ python3 ../deepfake_training.py \
 -is_guiding \
 -ipf \
 -cm 2 \
--cl 200 \
+-cl 50 \
 

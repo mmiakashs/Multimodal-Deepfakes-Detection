@@ -289,7 +289,7 @@ if(args.is_pretrained_feature):
                                    modalities=modalities,
                                    dataset_type='train',
                                    metadata_filename='metadata.csv',
-                                   is_fake=True)
+                                   is_fake=False)
 else:
     full_dataset = DeepFakeDataset(data_dir_base_path=data_dir_base_path,
                                    modalities=modalities,
@@ -317,9 +317,6 @@ if shuffle_dataset :
     np.random.seed(random_seed)
     np.random.shuffle(indices)
 train_indices, val_indices = indices[split:], indices[:split]
-if(args.is_small_training):
-    val_indices = val_indices[:150]
-    train_indices = train_indices[:1000]
 
 # Creating PT data samplers and loaders:
 train_sampler = SubsetRandomSampler(train_indices)

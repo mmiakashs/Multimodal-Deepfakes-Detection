@@ -32,6 +32,19 @@ class DeepFakePretrainedDataset(Dataset):
         self.data = self.data[self.data[config.dataset_split_tag] == self.dataset_type]
         if(self.is_fake):
             self.data = self.data[self.data['label'] == config.fake_label_tag]
+        for i, row in self.data.iterrows():
+            tm_filename = row[config.filename_tag]
+            if(not os.path.exists(f'/data/research_data/dfdc_train_data/{tm_filename}')):
+                self.data.at[i,'label'] = 'MISSING'
+                
+            tm_filename = row[config.original_filename_tag]
+            if((row['label']==config.fake_label_tag) and (not os.path.exists(f'/data/research_data/dfdc_train_data/{tm_filename}'))):
+                self.data.at[i,'label'] = 'MISSING'
+        if(self.is_fake):
+            self.data = self.data[self.data['label'] == config.fake_label_tag]
+        
+        self.data = self.data[self.data['label'] != 'MISSING']
+            
         self.data.reset_index(inplace=True)
 
     def __len__(self):
@@ -41,9 +54,11 @@ class DeepFakePretrainedDataset(Dataset):
         return torch.arange(max_len) > seq_len
     
     def get_embedding(self, idx, filename_tag):
+#         print(self.data.loc[idx, filename_tag], self.data.loc[idx, config.label_tag])
         filename = f'{self.data.loc[idx, filename_tag].split(".")[0]}.pt'
         data_filepath = f'{self.data_dir_base_path}/{filename}'
-        seq = torch.load(data_filepath).detach()
+        seq = torch.load(data_filepath)
+        seq = seq.detach()
 
         return seq, seq.size(0)
 
@@ -64,9 +79,9 @@ class DeepFakePretrainedDataset(Dataset):
             modality_mask.append(True if seq_len == 0 else False)
             
             modality = config.fake_modality_tag
-            data[modality] = torch.zeros_like(seq)
-            data[modality + config.modality_seq_len_tag] = 0
-            modality_mask.append(True)
+            data[modality] = seq
+            data[modality + config.modality_seq_len_tag] = seq_len
+            modality_mask.append(True if seq_len == 0 else False)
 
         else:
             modality = config.real_modality_tag

@@ -32,6 +32,8 @@ parser.add_argument("-sfn", "--start_file_num", help="start_file_num",
                     type=int, default=-1)
 parser.add_argument("-cdn", "--cuda_device_no", help="cuda device no",
                     type=int, default=0)
+parser.add_argument("-fn", "--filename", help="filename",
+                     default="none")
 args = parser.parse_args()
 
 rgb_transforms = transforms.Compose([
@@ -50,34 +52,13 @@ feature_extractor.eval()
 # print(feature_extractor)
 total_parsing = 0
 start_time = time.time()
-for count, filename in enumerate(sorted(os.listdir(data_dir_base_path), reverse=False)):
-#         print('filename',filename)tm_filename = filename.split('.')[0]
-    ext = filename.split('.')[1]
-    tm_filename = filename.split('.')[0]
-    if(ext!='mp4'):
-        continue
-    if(total_parsing<=args.start_file_num):
-        total_parsing += 1
-        continue
-    if(os.path.exists(f'{embed_dir_base_path}/{tm_filename}.pt')):
-        total_parsing += 1
-        if(total_parsing%1000==0):
-            print(f'parsing completed:{total_parsing}')
-        continue
-    video = Video(f'{data_dir_base_path}/{filename}', transforms=rgb_transforms)
-    seq, seq_len = video.get_all_frames()
-    seq = seq.to(device)
-    embed = feature_extractor(seq)
-    embed = embed.detach()
-    filename = filename.split('.')[0]
-    torch.save(embed, f'{embed_dir_base_path}/{filename}.pt')
-#     print('embedding is saved to: ',f'{embed_dir_base_path}/{filename}.pt')
-#     print('embedding size', embed.size())
-#     break
-    total_parsing += 1
-    if(total_parsing%1000==0):
-        print(f'parsing completed:{total_parsing}')
+filename = args.filename
 
-print("--- %s seconds ---" % (time.time() - start_time))
-print(f'total file parsing {total_parsing}')
-print('feature_extraction_complete')
+video = Video(f'{data_dir_base_path}/{filename}', transforms=rgb_transforms)
+seq, seq_len = video.get_all_frames()
+seq = seq.to(device)
+embed = feature_extractor(seq)
+embed = embed.detach()
+filename = filename.split('.')[0]
+torch.save(embed, f'{embed_dir_base_path}/{filename}.pt')
+print(f'parsing complete {filename}')
