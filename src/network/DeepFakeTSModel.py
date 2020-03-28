@@ -33,7 +33,6 @@ class DeepFakeTSModel(nn.Module):
         self.activation = activation
         self.window_size = window_size
         self.window_stride = window_stride
-        self.lstm_bidirectional = False
         self.modality_embedding_size = modality_embedding_size
         self.module_networks = module_networks
         self.num_module_networks = len(self.module_networks)
@@ -42,6 +41,7 @@ class DeepFakeTSModel(nn.Module):
         self.is_pretrained_feature = is_pretrained_feature
 
         print('module_networks', self.module_networks)
+        self.lstm_bidirectional = False
         self.mm_module = nn.ModuleDict()
         for modality in self.module_networks:
             self.mm_module[modality] = Vis_Module(cnn_in_channel=self.mm_module_properties[modality]['cnn_in_channel'],

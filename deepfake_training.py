@@ -136,7 +136,7 @@ parser.add_argument("-cm", "--cycle_mul", help="total number of executed iterati
                     type=int, default=2)
 parser.add_argument("-vpi", "--valid_person_index", help="valid person index",
                     type=int, default=0)
-parser.add_argument("-ipt", "--is_pretrained_feature", help="is_pretrained_feature",
+parser.add_argument("-ipf", "--is_pretrained_feature", help="is_pretrained_feature",
                     action="store_true", default=False)
 parser.add_argument("-ist", "--is_small_training", help="is_small_training",
                     action="store_true", default=False)
@@ -180,7 +180,7 @@ multi_modal_nhead = args.multi_modal_nhead
 gat_mh_attn_nhead = args.gat_mh_attn_nhead
 lstm_encoder_num_layers = args.encoder_num_layers
 lstm_bidirectional = args.lstm_bidirectional
-lstm_bidirectional = False
+# lstm_bidirectional = False
 gat_attention_type = args.gat_attention_type
 mm_embedding_attn_merge_type = args.mm_embedding_attn_merge_type
 is_gat_attn_model = args.is_gat_attn_model

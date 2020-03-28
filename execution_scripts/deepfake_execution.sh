@@ -2,25 +2,27 @@ python3 ../deepfake_training.py \
 -lr 0.0003 \
 -ng 1 \
 -cdn 1 \
--sml 300 \
--bs 2 \
--ep 100 \
+-sml 9 \
+-bs 64 \
+-ep 500 \
 -enl 2 \
 -fes 256 \
 -lhs 256 \
 -menh 2 \
 -mmnh 2 \
--lld 0.2 \
--uld 0.2 \
+-lld 0.3 \
+-uld 0.3 \
 -cout 64 \
 -mmattn_type 'concat' \
 -logbd 'log' \
--logf 'exe_dfts_h42_dp3.log' \
+-logf 'exe_dfts_pt_h22_dp3.log' \
 -tbl \
--tb_wn 'tb_runs/tb_dfts/h42_dp3' \
--mcp 'dfts_' \
+-tb_wn 'tb_runs/tb_dfts/pt_h22_dp3' \
+-mcp 'dfts_pt' \
 -lstm_bi \
--dfp '/data/research_data/dfdc_train_data' \
+-dfp '/data/research_data/dfdc_embed' \
 -is_guiding \
+-ipf \
 -cm 2 \
--cl 50
+-cl 200 \
+
